@@ -1,0 +1,27 @@
+{type name} [size in bytes]:
+
+    {byte} [1]:
+        Represented as unsigned 8 bit integer, useful for opcodes / status codes.
+
+    {flags} [1]:
+        This is essentially the same as byte, but is represented as an array of  8 booleans.
+        Note: when writing to this type, you can send less than 8 booleans, remaining bits
+        will be 0.
+
+    {size} [1-4]:
+        Flexible unsigned integer type, length depends on value and is defined on the
+        signature that takes the first two bits of the first byte:
+        * 0...127 => 1 byte;             sig => 0XXXXXXX                            <unsigned 7 bit>
+        * 128...16383 => 2 bytes;        sig => 10XXXXXX XXXXXXXX                   <unsigned 14 bit>
+        * 16384...1073741823 => 4 bytes; sig => 11XXXXXX XXXXXXXX XXXXXXXX XXXXXXXX <unsigned 30 bit>
+
+    {string} [1 to 1073741827]:
+        A type that's composite of {size} and a number of bytes represented by it. I don't
+        know why would you want to send a gigabyte of data in a string over a websocket,
+        but you can.
+
+    {integer} [4]:
+        A signed 32 bit integer with fixed size.
+
+    {float} [8]:
+        A signed 64 bit float.
