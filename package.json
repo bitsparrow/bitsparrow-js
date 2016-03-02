@@ -3,9 +3,7 @@
   "version": "0.1.0",
   "description": "JavaScript implementation of BitSparrow - http://bitsparrow.io/",
   "main": "index.js",
-  "dependencies": {
-    "text-encoder-lite": "^1.0.0"
-  },
+  "dependencies": {},
   "devDependencies": {
     "colortape": "^0.1.1",
     "tape": "^4.4.0"
