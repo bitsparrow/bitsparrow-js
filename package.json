@@ -1,0 +1,33 @@
+{
+  "name": "bitsparrow",
+  "version": "0.1.0",
+  "description": "JavaScript implementation of BitSparrow - http://bitsparrow.io/",
+  "main": "index.js",
+  "dependencies": {
+    "text-encoder-lite": "^1.0.0"
+  },
+  "devDependencies": {
+    "colortape": "^0.1.1",
+    "tape": "^4.4.0"
+  },
+  "scripts": {
+    "test": "node ./test | colortape"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/maciejhirsz/bitsparrow-js.git"
+  },
+  "keywords": [
+    "bitsparrow",
+    "ieee574",
+    "binary",
+    "data",
+    "messagepack"
+  ],
+  "author": "Maciej Hirsz",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/maciejhirsz/bitsparrow-js/issues"
+  },
+  "homepage": "https://github.com/maciejhirsz/bitsparrow-js"
+}
