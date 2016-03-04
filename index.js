@@ -195,27 +195,18 @@
             },
 
             function size(size) {
-                if (size > 1073741823 /* 00111111 11111111 11111111 11111111 */) {
+                if (size > 0x3fffffff) {
                     throw new Error("Provided size is too long!");
                 }
 
-                if (size < 128) {
-                    // can fit on 7 bits
-                    this.data.push(size);
-                } else if (size < 16384) {
-                    // can fit on 14 bits
-                    this.data.push(
-                        size >> 8 | 128 /* 10000000 */,
-                        size & 0xFF
-                    );
-                } else {
-                    this.uint32(size);
+                // can fit on 7 bits
+                if (size < 0x80) return this.uint8(size);
 
-                    // retrospectively attach signature
-                    var sigindex = this.data.length - 4;
-                    this.data[sigindex] = this.data[sigindex] | 192 /* 11000000 */;
-                }
-                return this;
+                // can fit on 14 bits
+                if (size < 0x4000) return this.uint16(size | 0x8000);
+
+                // use up to 30 bits
+                return this.uint32(size | 0xc0000000);
             },
 
             function blob(blob) {
