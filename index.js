@@ -146,6 +146,8 @@
     var Encoder = (function() {
         function Encoder() {
             this.data = [];
+            this.bool_index = -1;
+            this.bool_shift = 0;
         }
 
         function writeType(value, data, tarr, bytes) {
@@ -192,6 +194,24 @@
             function float64(float64) {
                 writeType(float64, this.data, f64arr, 8);
                 return this;
+            },
+
+            function bool(bool) {
+                var bits,
+                    bool_bit = bool ? 1 : 0,
+                    index = this.data.length;
+
+                if (this.bool_index == index && this.bool_shift < 7) {
+                    this.bool_shift += 1;
+                    bits = this.data[index - 1];
+                    bits = bits | bool_bit << this.bool_shift;
+                    this.data[index - 1] = bits;
+                    return this;
+                }
+
+                this.bool_index = index + 1;
+                this.bool_shift = 0;
+                return this.uint8(bool_bit);
             },
 
             function size(size) {
@@ -243,6 +263,8 @@
             this.data = data;
             this.index = 0;
             this.len = data.length;
+            this.bool_index = -1;
+            this.bool_shift = 0;
         }
 
         function readType(decoder, tarr, bytes) {
@@ -284,6 +306,20 @@
 
             function float64() {
                 return readType(this, f64arr, 8);
+            },
+
+            function bool() {
+                var bits;
+                if (this.bool_index == this.index && this.bool_shift < 7) {
+                    this.bool_shift += 1;
+                    bits = this.data[this.index - 1];
+                    var bool_bit = 1 << this.bool_shift;
+                    return (bits & bool_bit) == bool_bit;
+                }
+                var bits = this.uint8();
+                this.bool_index = this.index;
+                this.bool_shift = 0;
+                return (bits & 1) == 1;
             },
 
             function size() {

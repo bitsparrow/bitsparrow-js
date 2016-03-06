@@ -124,3 +124,36 @@ test('eat own dog food', function (t) {
     // IEEE 754 float64 is the number type in JS, so it should match precisely
     t.equal(decoder.float64(), Math.PI, 'Can decode float 64');
 });
+
+test('stacking bools', function(t) {
+    t.plan(12);
+
+    var buffer = new bitsparrow.Encoder()
+        .bool(true)
+        .bool(false)
+        .bool(true)
+        .bool(false)
+        .bool(false)
+        .bool(false)
+        .bool(true)
+        .bool(true)
+        .bool(false)
+        .uint8(10)
+        .bool(true)
+        .encode();
+
+    t.equal(buffer.length, 4, 'Stacking 8 booleans uses 1 byte');
+
+    var decoder = new bitsparrow.Decoder(buffer);
+    t.equal(decoder.bool(), true);
+    t.equal(decoder.bool(), false);
+    t.equal(decoder.bool(), true);
+    t.equal(decoder.bool(), false);
+    t.equal(decoder.bool(), false);
+    t.equal(decoder.bool(), false);
+    t.equal(decoder.bool(), true);
+    t.equal(decoder.bool(), true);
+    t.equal(decoder.bool(), false);
+    t.equal(decoder.uint8(), 10);
+    t.equal(decoder.bool(), true, 'Boolean stack resets on other types');
+});
