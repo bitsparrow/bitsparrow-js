@@ -166,3 +166,12 @@ test('stacking bools', function(t) {
   t.equal(decoder.uint8(), 10);
   t.equal(decoder.bool(), true, 'Boolean stack resets on other types');
 });
+
+test('string in bounds', function(t) {
+  t.plan(1);
+
+  var buffer = new bitsparrow.Encoder().string("Some string").encode();
+  var string = new bitsparrow.Decoder(buffer).string();
+
+  t.equal(string, "Some string");
+})

@@ -277,7 +277,7 @@
       if (data == null || data.length == null) throw new Error("Invalid type");
       this.data = data;
       this.index = 0;
-      this.len = data.length;
+      this.length = data.length;
       this.boolIndex = -1;
       this.boolShift = 0;
     },
@@ -353,7 +353,7 @@
 
     function blob() {
       var size = this.size();
-      if (this.index + size >= this.length) throw new Error("Reading out of boundary");
+      if (this.index + size > this.length) throw new Error("Reading out of boundary");
       var blob = this.data.slice(this.index, this.index + size);
 
       this.index += size;
