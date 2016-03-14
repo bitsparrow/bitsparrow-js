@@ -6,9 +6,7 @@ var buffer = new bitsparrow.Encoder()
              .uint8(20)
              .string("Hello World!")
              .float32(42.1337)
-             .encode();
-
-console.log(buffer);
+             .end();
 
 var expected = new Buffer([
   0xc8,0x23,0x29,0x49,0x96,0x02,0xd2,0xd6,0x8a,0xd0,0xb6,0x69,0xfd,
@@ -86,10 +84,10 @@ var expected = new Buffer([
 ]);
 var longText = "Sparrow /ˈsper.oʊ/\n\nUnder the classification used in the Handbook of the Birds of the World (HBW) main groupings of the sparrows are the true sparrows (genus Passer), the snowfinches (typically one genus, Montifringilla), and the rock sparrows (Petronia and the pale rockfinch). These groups are similar to each other, and are each fairly homogeneous, especially Passer.[4] Some classifications also include the sparrow-weavers (Plocepasser) and several other African genera (otherwise classified among the weavers, Ploceidae)[4] which are morphologically similar to Passer.[5] According to a study of molecular and skeletal evidence by Jon Fjeldså and colleagues, the cinnamon ibon of the Philippines, previously considered to be a white-eye, is a sister taxon to the sparrows as defined by the HBW. They therefore classify it as its own subfamily within Passeridae.[5]";
 
-var blob = new Buffer([1,2,3,4,5,6]);
+var bytes = new Buffer([1,2,3,4,5,6]);
 
 test('eat own dog food', function (t) {
-  t.plan(16);
+  t.plan(17);
 
   var buffer = new bitsparrow.Encoder()
     .uint8(200)
@@ -100,14 +98,14 @@ test('eat own dog food', function (t) {
     .int32(-1234567890)
     .string('BitSparrow 🐦')
     .string(longText)
-    .blob(blob)
+    .bytes(bytes)
     .size(100)
     .size(10000)
     .size(1000000)
     .size(1073741823)
     .float32(Math.PI)
     .float64(Math.PI)
-    .encode();
+    .end();
 
   t.ok(expected.equals(buffer), 'Encoding matches predefined data');
 
@@ -121,7 +119,7 @@ test('eat own dog food', function (t) {
   t.equal(decoder.int32(), -1234567890, 'Can decode int32');
   t.equal(decoder.string(), 'BitSparrow 🐦', 'Can decode utf8 strings');
   t.equal(decoder.string(), longText, 'Can decode long utf8 strings');
-  t.ok(blob.equals(decoder.blob()), 'Can decode binary blobs');
+  t.ok(bytes.equals(decoder.bytes()), 'Can decode byte buffers');
   t.equal(decoder.size(), 100, 'Can decode size < 128');
   t.equal(decoder.size(), 10000, 'Can decode size < 16384');
   t.equal(decoder.size(), 1000000, 'Can decode size > 16384');
@@ -132,10 +130,11 @@ test('eat own dog food', function (t) {
 
   // IEEE 754 float64 is the number type in JS, so it should match precisely
   t.equal(decoder.float64(), Math.PI, 'Can decode float 64');
+  t.equal(decoder.end(), true, 'Reads till the end');
 });
 
 test('stacking bools', function(t) {
-  t.plan(12);
+  t.plan(13);
 
   var buffer = new bitsparrow.Encoder()
     .bool(true)
@@ -149,7 +148,7 @@ test('stacking bools', function(t) {
     .bool(false)
     .uint8(10)
     .bool(true)
-    .encode();
+    .end();
 
   t.equal(buffer.length, 4, 'Stacking 8 booleans uses 1 byte');
 
@@ -165,13 +164,15 @@ test('stacking bools', function(t) {
   t.equal(decoder.bool(), false);
   t.equal(decoder.uint8(), 10);
   t.equal(decoder.bool(), true, 'Boolean stack resets on other types');
+  t.equal(decoder.end(), true, 'Reads till the end');
 });
 
 test('string in bounds', function(t) {
-  t.plan(1);
+  t.plan(2);
 
-  var buffer = new bitsparrow.Encoder().string("Some string").encode();
-  var string = new bitsparrow.Decoder(buffer).string();
+  var buffer = new bitsparrow.Encoder().string('Some string').end();
+  var decoder = new bitsparrow.Decoder(buffer);
 
-  t.equal(string, "Some string");
+  t.equal(decoder.string(), 'Some string');
+  t.equal(decoder.end(), true);
 })

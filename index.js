@@ -17,11 +17,11 @@
   }
 
   // TextEncoder / TextDecoder fallbacks using logic from:
-  // https://github.com/feross/buffer/blob/master/index.js
+  // https://github.com/feross/buffer/bytes/master/index.js
   var TextEncoder = TextEncoder || define(
     function TextEncoder() {},
 
-    function encode(string) {
+    function end(string) {
       var units = Infinity,
           codePoint,
           length = string.length,
@@ -68,7 +68,7 @@
           leadSurrogate = null;
         }
 
-        // encode utf8
+        // end utf8
         if (codePoint < 0x80) {
           if ((units -= 1) < 0) break;
           bytes.push(codePoint);
@@ -136,7 +136,7 @@
   var strToSlice = (function() {
     var encoder = new TextEncoder('utf-8');
     return function(str) {
-      return encoder.encode(str);
+      return encoder.end(str);
     }
   })();
 
@@ -248,22 +248,22 @@
       return this.uint32(size | 0xc0000000);
     },
 
-    function blob(blob) {
-      var len = blob.length,
+    function bytes(bytes) {
+      var len = bytes.length,
         data = this.data,
         i = 0;
 
       this.size(len);
-      for (i = 0; i < len; i++) data.push(blob[i]);
+      for (i = 0; i < len; i++) data.push(bytes[i]);
 
       return this;
     },
 
     function string(string) {
-      return this.blob(strToSlice(string));
+      return this.bytes(strToSlice(string));
     },
 
-    function encode() {
+    function end() {
       if (IS_NODE) {
         return new Buffer(this.data);
       } else {
@@ -351,19 +351,23 @@
       return u32arr[0];
     },
 
-    function blob() {
+    function bytes() {
       var size = this.size();
       if (this.index + size > this.length) throw new Error("Reading out of boundary");
-      var blob = this.data.slice(this.index, this.index + size);
+      var bytes = this.data.slice(this.index, this.index + size);
 
       this.index += size;
 
-      return blob;
+      return bytes;
     },
 
     function string() {
-      var blob = this.blob();
-      return sliceToStr(new Uint8Array(blob));
+      var bytes = this.bytes();
+      return sliceToStr(new Uint8Array(bytes));
+    },
+
+    function end() {
+      return this.index >= this.length;
     }
   );
 
