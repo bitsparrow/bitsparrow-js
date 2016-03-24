@@ -264,10 +264,13 @@
     },
 
     function end() {
+      var data = this.data;
+      this.data = [];
+
       if (IS_NODE) {
-        return new Buffer(this.data);
+        return new Buffer(data);
       } else {
-        return new Uint8Array(this.data);
+        return new Uint8Array(data);
       }
     }
   );

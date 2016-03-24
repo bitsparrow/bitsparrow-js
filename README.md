@@ -1,6 +1,6 @@
 # BitSparrow in JavaScript
 
-**[Homepage](http://bitsparrow.io/) - [API Documentation](https://github.com/bitsparrow/bitsparrow-js/)**
+**[Homepage](http://bitsparrow.io/) - [API Documentation](https://github.com/bitsparrow/bitsparrow-js/blob/master/DOCS.md)**
 
 ## Encoding
 
@@ -64,7 +64,7 @@ retrieve the values in order they were encoded. Calling the
 read the entire buffer, which can be handy if you are reading
 multiple messages stacked on a single buffer.
 
-## The MIT License (MIT)
+# The MIT License (MIT)
 
 Copyright (c) 2016 BitSparrow
 
