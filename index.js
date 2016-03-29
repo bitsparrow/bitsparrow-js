@@ -113,8 +113,11 @@
 
       for (; i < length; i++) {
         if (buffer[i] <= 0x7F) {
-          result += this.decodeUtf8Char(temp) + String.fromCharCode(buffer[i]);
-          temp = '';
+          if (temp !== '') {
+            result += this.decodeUtf8Char(temp);
+            temp = '';
+          }
+          result += String.fromCharCode(buffer[i]);
         } else {
           temp += '%' + buffer[i].toString(16);
         }
@@ -124,7 +127,6 @@
     },
 
     function decodeUtf8Char (str) {
-      if (str === '') return str;
       try {
         return decodeURIComponent(str);
       } catch (err) {
