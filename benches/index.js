@@ -38,22 +38,6 @@ bench(function msgpack_decode_float64() {
 
 // ---- float64 encode ----
 
-bench(function alloc_8slot_array() {
-    return [255,255,255,255,255,255,255,255];
-});
-
-bench(function alloc_64bit_arraybuffer() {
-    return new ArrayBuffer(8);
-});
-
-bench(function alloc_64bit_buffer() {
-    return new Buffer([255,255,255,255,255,255,255,255]);
-});
-
-bench(function alloc_64bit_uint8arr() {
-    return new Uint8Array([255,255,255,255,255,255,255,255]);
-});
-
 bench(function encode_float64() {
     return new Encoder().float64(3.141592653589793).end();
 });
@@ -96,6 +80,18 @@ bench(function msgpack_encode_uint32() {
     return msgpack.encode(0xFFFFFFFF);
 });
 
+// ---- size decode ----
+buffer = new Encoder().size(0xFFFFFF).end();
+bench(function decode_size() {
+    return new Decoder(buffer).size();
+});
+
+// ---- size encode ----
+//
+bench(function encode_size() {
+    return new Encoder().size(0xFFFFFF).end();
+});
+
 // ---- string decode ----
 
 buffer = new Encoder().string("BitSparrow 🐦").end();
@@ -111,7 +107,6 @@ buffer = new msgpack.encode("BitSparrow 🐦");
 bench(function msgpack_decode_string() {
     return msgpack.decode(buffer);
 });
-
 
 // ---- string encode ----
 

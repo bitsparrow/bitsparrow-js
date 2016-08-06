@@ -163,6 +163,23 @@
         return tarr[0];
     }
 
+    // Because JavaScript Number type has enough bits to store 53 bit precision
+    // integers, but can only do binary operations on 32 bit *SIGNED* integers,
+    // all would-be-bitwise-operations on anything larger than 16 bit *UNSIGNED*
+    // integer needs to use floating point arithmetic - sad panda :(.
+    function brshift16(n) {
+        return Math.floor(n / 0x10000);
+    }
+
+    function brshift32(n) {
+        return Math.floor(n / 0x100000000);
+    }
+
+    function brshift48(n) {
+        return Math.floor(n / 0x1000000000000)
+    }
+
+
     function Encoder() {
         this.data = [];
         this.boolIndex = -1;
@@ -230,18 +247,53 @@
         },
 
         size: function(size) {
-            if (size > 0x3fffffff) {
+            // Max safe integer
+            if (size > 0x1FFFFFFFFFFFFF) {
                 throw new Error("Provided size is too long!");
             }
 
+            var data = this.data;
+
             // can fit on 7 bits
-            if (size < 0x80) return this.uint8(size);
+            if (size < 0x80) {
+                data.push(size);
+            } else if (size < 0x4000) {
+                data.push((size >> 8) | 0x80);
+                data.push(size & 0xFF);
+            } else if (size < 0x200000) {
+                // 3 bytes
+                u32arr[0] = size;
+                data.push(u8arr[3] | 0xC0);
+                data.push(u8arr[2]);
+                data.push(u8arr[1]);
+            } else if (size <= 0x10000000) {
+                // 4 bytes
+                u32arr[0] = size;
+                data.push(u8arr[3] | 0xE0);
+                data.push(u8arr[2]);
+                data.push(u8arr[1]);
+                data.push(u8arr[0]);
+            } else if (size <= 0x800000000) {
+                // 5 bytes
+                data.push(brshift32(size) | 0xF0);
+                writeType32(size % 0x100000000, data, u32arr);
+            } else if (size <= 0x40000000000) {
+                // 6 bytes
+                writeType16((size >>> 32) | 0xF800, data, u16arr);
+                writeType32(size & 0xFFFFFFFF, data, u32arr);
+            } else if (size <= 0x2000000000000) {
+                // 7 bytes
+                data.push(brshift48(size) | 0xFC);
+                writeType16(brshift32(size) & 0xFFFF, data, u16arr);
+                writeType32(size % 0x100000000, data, u32arr);
+            } else {
+                // 8 bytes
+                writeType16(brshift48(size) | 0xFE00, data, u16arr);
+                writeType16(brshift32(size) % 0x100000000, data, u16arr);
+                writeType32(size % 0x100000000, data, u32arr);
+            }
 
-            // can fit on 14 bits
-            if (size < 0x4000) return this.uint16(size | 0x8000);
-
-            // use up to 30 bits
-            return this.uint32(size | 0xc0000000);
+            return this;
         },
 
         bytes: function(bytes) {
@@ -261,9 +313,7 @@
 
         end: function() {
             var len = this.data.length;
-            var data = new BufferType(len);
-
-            while (len--) data[len] = this.data[len];
+            var data = new BufferType(this.data);
 
             this.data = [];
             return data;
@@ -336,18 +386,28 @@
             // 1 byte (no signature)
             if ((size & 128) === 0) return size;
 
-            var sig = size >>> 6;
-            // remove signature from the first byte
-            size = size & 63 /* 00111111 */;
+            var ext_bytes = 1;
+            size ^= 128;
 
-            // 2 bytes (signature is 10)
-            if (sig === 2) return size << 8 | this.uint8();
+            var allowance = 64;
 
-            // 4 bytes (signature is 11)
-            var i = 3;
-            u8arr[3] = size;
-            while (i--) u8arr[i] = this.uint8();
-            return u32arr[0];
+            while (allowance && (size & allowance)) {
+                size ^= allowance;
+                allowance >>= 1;
+                ext_bytes += 1;
+            }
+
+            if (ext_bytes > 7) {
+                throw new Error("Can't read size out of 53 bit range!");
+            }
+
+            while (ext_bytes) {
+                ext_bytes -= 1;
+                // Use regular math in case we run out of int32 precision
+                size = (size * 256) + this.uint8();
+            }
+
+            return size;
         },
 
         bytes: function() {
