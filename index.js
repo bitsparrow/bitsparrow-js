@@ -5,88 +5,22 @@
     var IS_NODE = typeof window !== "object" && typeof global === "object";
     var BufferType = IS_NODE ? Buffer : Uint8Array;
 
-    // TextEncoder / TextDecoder fallbacks using logic from:
-    // https://github.com/feross/buffer/bytes/master/index.js
     var TextEncoder = typeof window === 'object' ? window.TextEncoder : null;
     if (TextEncoder == null) {
         TextEncoder = function TextEncoder() {}
 
         TextEncoder.prototype = {
             encode: function(string) {
-                var units = Infinity,
-                    codePoint,
-                    length = string.length,
-                    leadSurrogate = null,
-                    bytes = [],
-                    i = 0;
+                string = encodeURIComponent(string);
+                var len = string.length;
+                var bytes = [];
+                var c;
 
-                for (; i < length; i++) {
-                    codePoint = string.charCodeAt(i);
+                for (var i = 0; i < len; i++) {
+                    c = string.charCodeAt(i);
 
-                    // is surrogate component
-                    if (codePoint > 0xD7FF && codePoint < 0xE000) {
-                        // last char was a lead
-                        if (leadSurrogate) {
-                            // 2 leads in a row
-                            if (codePoint < 0xDC00) {
-                                if ((units -= 3) > -1) bytes.push(0xEF, 0xBF, 0xBD);
-                                leadSurrogate = codePoint;
-                                continue;
-                            } else {
-                                // valid surrogate pair
-                                codePoint = leadSurrogate - 0xD800 << 10 | codePoint - 0xDC00 | 0x10000;
-                                leadSurrogate = null;
-                            }
-                        } else {
-                            // no lead yet
-                            if (codePoint > 0xDBFF) {
-                                // unexpected trail
-                                if ((units -= 3) > -1) bytes.push(0xEF, 0xBF, 0xBD);
-                                continue;
-                            } else if (i + 1 === length) {
-                                // unpaired lead
-                                if ((units -= 3) > -1) bytes.push(0xEF, 0xBF, 0xBD);
-                                continue;
-                            } else {
-                                // valid lead
-                                leadSurrogate = codePoint;
-                                continue;
-                            }
-                        }
-                    } else if (leadSurrogate) {
-                        // valid bmp char, but last char was a lead
-                        if ((units -= 3) > -1) bytes.push(0xEF, 0xBF, 0xBD);
-                        leadSurrogate = null;
-                    }
-
-                    // end utf8
-                    if (codePoint < 0x80) {
-                        if ((units -= 1) < 0) break;
-                        bytes.push(codePoint);
-                    } else if (codePoint < 0x800) {
-                        if ((units -= 2) < 0) break;
-                        bytes.push(
-                            codePoint >> 0x6 | 0xC0,
-                            codePoint & 0x3F | 0x80
-                        );
-                    } else if (codePoint < 0x10000) {
-                        if ((units -= 3) < 0) break;
-                        bytes.push(
-                            codePoint >> 0xC | 0xE0,
-                            codePoint >> 0x6 & 0x3F | 0x80,
-                            codePoint & 0x3F | 0x80
-                        );
-                    } else if (codePoint < 0x200000) {
-                        if ((units -= 4) < 0) break;
-                        bytes.push(
-                            codePoint >> 0x12 | 0xF0,
-                            codePoint >> 0xC & 0x3F | 0x80,
-                            codePoint >> 0x6 & 0x3F | 0x80,
-                            codePoint & 0x3F | 0x80
-                        );
-                    } else {
-                        throw new Error('Invalid code point');
-                    }
+                    // 37 is '%'                   string.substring(i + 1, i + 2); i += 2
+                    bytes.push(c === 37 ? parseInt(string.substring(++i, ++i + 1), 16) : c);
                 }
 
                 return bytes;
@@ -102,6 +36,9 @@
         }
     }
 
+
+    // TextDecoder fallback using logic from:
+    // https://github.com/feross/buffer/bytes/master/index.js
     var TextDecoder = typeof window === 'object' ? window.TextDecoder : null;
     if (TextDecoder == null) {
         TextDecoder = function TextDecoder() {}
@@ -114,7 +51,7 @@
                     i = 0;
 
                 for (; i < length; i++) {
-                    if (buffer[i] <= 0x7F) {
+                    if (buffer[i] < 128) {
                         if (temp !== '') {
                             result += decodeUtf8Char(temp);
                             temp = '';
@@ -359,12 +296,12 @@
         },
 
         int8: function() {
-            u8arr[0] = decoder.uint8();
+            u8arr[0] = this.uint8();
             return i8arr[0];
         },
 
         int16: function() {
-            return readType32(this, i16arr);
+            return readType16(this, i16arr);
         },
 
         int32: function() {
@@ -416,7 +353,8 @@
         bytes: function() {
             var size = this.size();
             if (this.index + size > this.length) throw new Error("Reading out of boundary");
-            var bytes = this.data.subarray(this.index, this.index + size);
+            var bytes = IS_NODE ? this.data.slice(this.index, this.index + size)
+                                : this.data.subarray(this.index, this.index + size);
 
             this.index += size;
 
