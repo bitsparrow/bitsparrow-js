@@ -3,6 +3,7 @@
 
     // Simple way to detect if running under Node.js
     var IS_NODE = typeof window !== "object" && typeof global === "object";
+    var BufferType = IS_NODE ? Buffer : Uint8Array;
 
     // TextEncoder / TextDecoder fallbacks using logic from:
     // https://github.com/feross/buffer/bytes/master/index.js
@@ -129,16 +130,20 @@
         };
     }
 
-    var strToSlice = (function() {
+    var strToSlice = IS_NODE ? function (str) {
+        return new Buffer(str);
+    } : (function () {
         var encoder = new TextEncoder('utf-8');
-        return function(str) {
+        return function (str) {
             return encoder.encode(str);
         }
     })();
 
-    var sliceToStr = (function() {
+    var sliceToStr = IS_NODE ? function (slice) {
+        return slice.toString();
+    } : (function () {
         var decoder = new TextDecoder('utf-8');
-        return function(str) {
+        return function (str) {
             return decoder.decode(str);
         }
     })();
@@ -154,13 +159,70 @@
         f32arr = new Float32Array(buffer),
         f64arr = new Float64Array(buffer);
 
-    function writeType(value, data, tarr, bytes) {
+    function writeType16(value, data, tarr) {
         tarr[0] = value;
-        while (bytes--) data.push(u8arr[bytes]);
+        data.push(u8arr[1]);
+        data.push(u8arr[0]);
     }
 
-    function readType(decoder, tarr, bytes) {
-        while (bytes--) u8arr[bytes] = decoder.uint8();
+    function writeType32(value, data, tarr) {
+        tarr[0] = value;
+        data.push(u8arr[3]);
+        data.push(u8arr[2]);
+        data.push(u8arr[1]);
+        data.push(u8arr[0]);
+    }
+
+    function writeType64(value, data, tarr) {
+        tarr[0] = value;
+        data.push(u8arr[7]);
+        data.push(u8arr[6]);
+        data.push(u8arr[5]);
+        data.push(u8arr[4]);
+        data.push(u8arr[3]);
+        data.push(u8arr[2]);
+        data.push(u8arr[1]);
+        data.push(u8arr[0]);
+    }
+
+    function readType16(decoder, tarr) {
+        var end = decoder.index + 2;
+        if (end > decoder.length) throw new Error("Reading out of boundary");
+        var data = decoder.data;
+        var index = decoder.index;
+        decoder.index = end;
+        u8arr[1] = data[index];
+        u8arr[0] = data[index + 1];
+        return tarr[0];
+    }
+
+    function readType32(decoder, tarr) {
+        var end = decoder.index + 4;
+        if (end > decoder.length) throw new Error("Reading out of boundary");
+        var data = decoder.data;
+        var index = decoder.index;
+        decoder.index = end;
+        u8arr[3] = data[index];
+        u8arr[2] = data[index + 1];
+        u8arr[1] = data[index + 2];
+        u8arr[0] = data[index + 3];
+        return tarr[0];
+    }
+
+    function readType64(decoder, tarr) {
+        var end = decoder.index + 8;
+        if (end > decoder.length) throw new Error("Reading out of boundary");
+        var data = decoder.data;
+        var index = decoder.index;
+        decoder.index = end;
+        u8arr[7] = data[index];
+        u8arr[6] = data[index + 1];
+        u8arr[5] = data[index + 2];
+        u8arr[4] = data[index + 3];
+        u8arr[3] = data[index + 4];
+        u8arr[2] = data[index + 5];
+        u8arr[1] = data[index + 6];
+        u8arr[0] = data[index + 7];
         return tarr[0];
     }
 
@@ -182,32 +244,33 @@
         },
 
         uint32: function(uint32) {
-            writeType(uint32, this.data, u32arr, 4);
+            writeType32(uint32, this.data, u32arr);
             return this;
         },
 
         int8: function(int8) {
-            writeType(int8, this.data, i8arr, 1);
+            i8arr[0] = int8;
+            this.data.push(u8arr[0]);
             return this;
         },
 
         int16: function(int16) {
-            writeType(int16, this.data, i16arr, 2);
+            writeType16(int16, this.data, i16arr);
             return this;
         },
 
         int32: function(int32) {
-            writeType(int32, this.data, i32arr, 4);
+            writeType32(int32, this.data, i32arr);
             return this;
         },
 
         float32: function(float32) {
-            writeType(float32, this.data, f32arr, 4);
+            writeType32(float32, this.data, f32arr);
             return this;
         },
 
         float64: function(float64) {
-            writeType(float64, this.data, f64arr, 8);
+            writeType64(float64, this.data, f64arr);
             return this;
         },
 
@@ -245,9 +308,9 @@
         },
 
         bytes: function(bytes) {
-            var len = bytes.length,
-                data = this.data,
-                i = 0;
+            var len = bytes.length;
+            var data = this.data;
+            var i = 0;
 
             this.size(len);
             for (i = 0; i < len; i++) data.push(bytes[i]);
@@ -260,14 +323,13 @@
         },
 
         end: function() {
-            var data = this.data;
-            this.data = [];
+            var len = this.data.length;
+            var data = new BufferType(len);
 
-            if (IS_NODE) {
-                return new Buffer(data);
-            } else {
-                return new Uint8Array(data);
-            }
+            while (len--) data[len] = this.data[len];
+
+            this.data = [];
+            return data;
         }
     };
 
@@ -289,31 +351,32 @@
         },
 
         uint16: function() {
-            return (this.uint8() << 8) | this.uint8();
+            return readType16(this, u16arr);
         },
 
         uint32: function() {
-            return readType(this, u32arr, 4);
+            return readType32(this, u32arr);
         },
 
         int8: function() {
-            return readType(this, i8arr, 1);
+            u8arr[0] = decoder.uint8();
+            return i8arr[0];
         },
 
         int16: function() {
-            return readType(this, i16arr, 2);
+            return readType32(this, i16arr);
         },
 
         int32: function() {
-            return readType(this, i32arr, 4);
+            return readType32(this, i32arr);
         },
 
         float32: function() {
-            return readType(this, f32arr, 4);
+            return readType32(this, f32arr);
         },
 
         float64: function() {
-            return readType(this, f64arr, 8);
+            return readType64(this, f64arr);
         },
 
         bool: function() {
@@ -353,7 +416,7 @@
         bytes: function() {
             var size = this.size();
             if (this.index + size > this.length) throw new Error("Reading out of boundary");
-            var bytes = this.data.slice(this.index, this.index + size);
+            var bytes = this.data.subarray(this.index, this.index + size);
 
             this.index += size;
 
@@ -362,7 +425,7 @@
 
         string: function() {
             var bytes = this.bytes();
-            return sliceToStr(new Uint8Array(bytes));
+            return sliceToStr(new BufferType(bytes));
         },
 
         end: function() {

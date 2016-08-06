@@ -1,15 +1,17 @@
 {
   "name": "bitsparrow",
-  "version": "0.3.2",
+  "version": "1.0.0",
   "description": "JavaScript implementation of BitSparrow - http://bitsparrow.io/",
   "main": "index.js",
   "dependencies": {},
   "devDependencies": {
     "colortape": "^0.1.1",
+    "msgpack-lite": "^0.1.20",
     "tape": "^4.4.0"
   },
   "scripts": {
-    "test": "node ./test | colortape"
+    "test": "node ./test | colortape",
+    "bench": "node ./benches"
   },
   "repository": {
     "type": "git",
