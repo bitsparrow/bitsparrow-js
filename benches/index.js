@@ -38,6 +38,22 @@ bench(function msgpack_decode_float64() {
 
 // ---- float64 encode ----
 
+bench(function alloc_8slot_array() {
+    return [255,255,255,255,255,255,255,255];
+});
+
+bench(function alloc_64bit_arraybuffer() {
+    return new ArrayBuffer(8);
+});
+
+bench(function alloc_64bit_buffer() {
+    return new Buffer([255,255,255,255,255,255,255,255]);
+});
+
+bench(function alloc_64bit_uint8arr() {
+    return new Uint8Array([255,255,255,255,255,255,255,255]);
+});
+
 bench(function encode_float64() {
     return new Encoder().float64(3.141592653589793).end();
 });

@@ -250,7 +250,7 @@
             var i = 0;
 
             this.size(len);
-            for (i = 0; i < len; i++) data.push(bytes[i]);
+            for (; i < len; i++) data.push(bytes[i]);
 
             return this;
         },
