@@ -3,7 +3,6 @@ var bitsparrow = require('../index');
 var Encoder = bitsparrow.Encoder;
 var Decoder = bitsparrow.Decoder;
 
-//var bitsparrow = require('bitsparrow');
 var buffer = new Encoder()
                  .uint8(20)
                  .string("Hello World!")
@@ -84,7 +83,18 @@ var expected = new Buffer([
     0x05,0x06,0x64,0xa7,0x10,0xcf,0x42,0x40,0xf0,0x3f,0xff,0xff,0xff,
     0x40,0x49,0x0f,0xdb,0x40,0x09,0x21,0xfb,0x54,0x44,0x2d,0x18
 ]);
-var longText = "Sparrow /ˈsper.oʊ/\n\nUnder the classification used in the Handbook of the Birds of the World (HBW) main groupings of the sparrows are the true sparrows (genus Passer), the snowfinches (typically one genus, Montifringilla), and the rock sparrows (Petronia and the pale rockfinch). These groups are similar to each other, and are each fairly homogeneous, especially Passer.[4] Some classifications also include the sparrow-weavers (Plocepasser) and several other African genera (otherwise classified among the weavers, Ploceidae)[4] which are morphologically similar to Passer.[5] According to a study of molecular and skeletal evidence by Jon Fjeldså and colleagues, the cinnamon ibon of the Philippines, previously considered to be a white-eye, is a sister taxon to the sparrows as defined by the HBW. They therefore classify it as its own subfamily within Passeridae.[5]";
+var longText = "Sparrow /ˈsper.oʊ/\n\nUnder the classification used in \
+the Handbook of the Birds of the World (HBW) main groupings of the sparrows \
+are the true sparrows (genus Passer), the snowfinches (typically one genus, \
+Montifringilla), and the rock sparrows (Petronia and the pale rockfinch). \
+These groups are similar to each other, and are each fairly homogeneous, \
+especially Passer.[4] Some classifications also include the sparrow-weavers \
+(Plocepasser) and several other African genera (otherwise classified among \
+the weavers, Ploceidae)[4] which are morphologically similar to Passer.[5] \
+According to a study of molecular and skeletal evidence by Jon Fjeldså and \
+colleagues, the cinnamon ibon of the Philippines, previously considered to \
+be a white-eye, is a sister taxon to the sparrows as defined by the HBW. \
+They therefore classify it as its own subfamily within Passeridae.[5]";
 
 var bytes = new Buffer([1,2,3,4,5,6]);
 
