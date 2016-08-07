@@ -172,8 +172,8 @@ test('stacking bools', function(t) {
 function roundtrip(t, value, type) {
     var buffer = new Encoder()[type](value).end();
     var decoder = new Decoder(buffer);
-    t.equal(decoder[type](), value, `Roundtrip ${type} with 0x${value.toString(16).toUpperCase()}`);
-    t.ok(decoder.end(), `Roundtrip ${type} in bounds`);
+    t.equal(decoder[type](), value, 'Roundtrip '+type+' with 0x'+value.toString(16).toUpperCase());
+    t.ok(decoder.end(), 'Roundtrip '+type+' in bounds');
 }
 
 test('Roundtripping', function(t) {
