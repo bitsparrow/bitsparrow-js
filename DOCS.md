@@ -21,7 +21,7 @@ Stores a `number` as an unsigned 32 bit integer on the buffer.
 #### `uint64(number)` → `Encoder`
 Stores a `number` as an unsigned 64 bit integer on the buffer.
 
-*Note:* Because JavaScript `Number` type can only accurately
+**Note:** Because JavaScript `Number` type can only accurately
 represent 53 bits of precision, encoding a number larger than
  `Number.MAX_SAFE_INTEGER` can lead to inoperability issues.
 
@@ -37,7 +37,7 @@ Stores a `number` as a signed 32 bit integer on the buffer.
 #### `int64(number)` → `Encoder`
 Stores a `number` as a signed 32 bit integer on the buffer.
 
-*Note:* Because JavaScript `Number` type can only accurately
+**Note:** Because JavaScript `Number` type can only accurately
 represent 53 bits of precision, encoding a number larger than
  `Number.MAX_SAFE_INTEGER` or smaller than `-Number.MAX_SAFE_INTEGER`
  can lead to inoperability issues.
@@ -82,7 +82,7 @@ can have an arbitrary length. Detailed explanation on how
 BitSparrow stores `size` can be found on
 [the homepage](http://bitsparrow.io).
 
-*Note:* Because JavaScript `Number` type can only accurately
+**Note:** Because JavaScript `Number` type can only accurately
 represent 53 bits of precision, encoding a number larger than
  `Number.MAX_SAFE_INTEGER` will throw an error.
 
@@ -124,7 +124,7 @@ the internal index and returns a number.
 Reads an unsigned 64 bit integer from the buffer, progresses
 the internal index and returns a number.
 
-*Note:* Because JavaScript `Number` type can only accurately
+**Note:** Because JavaScript `Number` type can only accurately
 represent 53 bits of precision, decoding a number larger than
  `Number.MAX_SAFE_INTEGER` can lead to inoperability issues.
 
@@ -144,7 +144,7 @@ the internal index and returns a number.
 Reads a signed 64 bit integer from the buffer, progresses
 the internal index and returns a number.
 
-*Note:* Because JavaScript `Number` type can only accurately
+**Note:** Because JavaScript `Number` type can only accurately
 represent 53 bits of precision, decoding a number larger than
  `Number.MAX_SAFE_INTEGER` or smaller than `-Number.MAX_SAFE_INTEGER`
  can lead to inoperability issues.
