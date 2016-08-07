@@ -5,12 +5,14 @@
   "main": "index.js",
   "dependencies": {},
   "devDependencies": {
-    "colortape": "^0.1.1",
     "msgpack-lite": "0.1.20",
+    "tap-nyan": "0.0.2",
+    "tap-spec": "4.1.1",
     "tape": "4.6.0"
   },
   "scripts": {
-    "test": "node ./test | colortape",
+    "test": "node ./tests | tap-spec",
+    "test-nyan": "node ./tests | tnyan",
     "bench": "node ./benches"
   },
   "repository": {

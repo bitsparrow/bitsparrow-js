@@ -202,6 +202,12 @@
             return this;
         },
 
+        uint64: function(uint64) {
+            writeType32(brshift32(uint64), this.data, u32arr);
+            writeType32(uint64, this.data, u32arr);
+            return this;
+        },
+
         int8: function(int8) {
             i8arr[0] = int8;
             this.data.push(u8arr[0]);
@@ -215,6 +221,13 @@
 
         int32: function(int32) {
             writeType32(int32, this.data, i32arr);
+            return this;
+        },
+
+        int64: function(int64) {
+            writeType32(brshift32(int64), this.data, i32arr);
+            var low = int64 % 0x100000000;
+            writeType32(low < 0 ? -low : low, this.data, u32arr);
             return this;
         },
 
@@ -254,10 +267,11 @@
 
             var data = this.data;
 
-            // can fit on 7 bits
             if (size < 0x80) {
+                // 1 byte
                 data.push(size);
             } else if (size < 0x4000) {
+                // 2 bytes
                 data.push((size >> 8) | 0x80);
                 data.push(size & 0xFF);
             } else if (size < 0x200000) {
@@ -279,7 +293,7 @@
                 writeType32(size % 0x100000000, data, u32arr);
             } else if (size <= 0x40000000000) {
                 // 6 bytes
-                writeType16((size >>> 32) | 0xF800, data, u16arr);
+                writeType16(brshift32(size) | 0xF800, data, u16arr);
                 writeType32(size & 0xFFFFFFFF, data, u32arr);
             } else if (size <= 0x2000000000000) {
                 // 7 bytes
@@ -345,6 +359,11 @@
             return readType32(this, u32arr);
         },
 
+        uint64: function() {
+            var uint64 = readType32(this, u32arr) * 0x100000000;
+            return uint64 + readType32(this, u32arr);
+        },
+
         int8: function() {
             u8arr[0] = this.uint8();
             return i8arr[0];
@@ -356,6 +375,13 @@
 
         int32: function() {
             return readType32(this, i32arr);
+        },
+
+        int64: function() {
+            var int64 = readType32(this, i32arr) * 0x100000000;
+            var low = readType32(this, u32arr);
+            return int64 < 0 ? int64 - (low - 0x100000000)
+                             : int64 + low;
         },
 
         float32: function() {

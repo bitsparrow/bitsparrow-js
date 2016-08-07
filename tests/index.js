@@ -1,8 +1,10 @@
 var test = require('tape');
-var bitsparrow = require('./index');
+var bitsparrow = require('../index');
+var Encoder = bitsparrow.Encoder;
+var Decoder = bitsparrow.Decoder;
 
 //var bitsparrow = require('bitsparrow');
-var buffer = new bitsparrow.Encoder()
+var buffer = new Encoder()
                  .uint8(20)
                  .string("Hello World!")
                  .float32(42.1337)
@@ -89,7 +91,7 @@ var bytes = new Buffer([1,2,3,4,5,6]);
 test('eat own dog food', function (t) {
     t.plan(17);
 
-    var buffer = new bitsparrow.Encoder()
+    var buffer = new Encoder()
         .uint8(200)
         .uint16(9001)
         .uint32(1234567890)
@@ -109,7 +111,7 @@ test('eat own dog food', function (t) {
 
     t.ok(expected.equals(buffer), 'Encoding matches predefined data');
 
-    var decoder = new bitsparrow.Decoder(buffer);
+    var decoder = new Decoder(buffer);
 
     t.equal(decoder.uint8(), 200, 'Can decode uint8');
     t.equal(decoder.uint16(), 9001, 'Can decode uint16');
@@ -136,23 +138,23 @@ test('eat own dog food', function (t) {
 test('stacking bools', function(t) {
     t.plan(13);
 
-    var buffer = new bitsparrow.Encoder()
-        .bool(true)
-        .bool(false)
-        .bool(true)
-        .bool(false)
-        .bool(false)
-        .bool(false)
-        .bool(true)
-        .bool(true)
-        .bool(false)
-        .uint8(10)
-        .bool(true)
-        .end();
+    var buffer = new Encoder()
+                    .bool(true)
+                    .bool(false)
+                    .bool(true)
+                    .bool(false)
+                    .bool(false)
+                    .bool(false)
+                    .bool(true)
+                    .bool(true)
+                    .bool(false)
+                    .uint8(10)
+                    .bool(true)
+                    .end();
 
     t.equal(buffer.length, 4, 'Stacking 8 booleans uses 1 byte');
 
-    var decoder = new bitsparrow.Decoder(buffer);
+    var decoder = new Decoder(buffer);
     t.equal(decoder.bool(), true);
     t.equal(decoder.bool(), false);
     t.equal(decoder.bool(), true);
@@ -167,12 +169,55 @@ test('stacking bools', function(t) {
     t.equal(decoder.end(), true, 'Reads till the end');
 });
 
-test('string in bounds', function(t) {
-    t.plan(2);
+function roundtrip(t, value, type) {
+    const buffer = new Encoder()[type](value).end();
+    const decoder = new Decoder(buffer);
+    t.equal(decoder[type](), value, `Roundtrip ${type} with 0x${value.toString(16).toUpperCase()}`);
+    t.ok(decoder.end(), `Roundtrip ${type} in bounds`);
+}
 
-    var buffer = new bitsparrow.Encoder().string('Some string').end();
-    var decoder = new bitsparrow.Decoder(buffer);
+test('Roundtripping', function(t) {
+    roundtrip(t,                     true, 'bool');
+    roundtrip(t,                    false, 'bool');
+    roundtrip(t,                        0, 'size'); // 1 byte
+    roundtrip(t,                     0x7F, 'size'); // 2 bytes
+    roundtrip(t,                   0x3FFF, 'size'); // 3 bytes
+    roundtrip(t,                 0x1FFFFF, 'size'); // 4 bytes
+    roundtrip(t,               0x0FFFFFFF, 'size'); // 5 bytes
+    roundtrip(t,             0x07FFFFFFFF, 'size'); // 6 bytes
+    roundtrip(t,           0x03FFFFFFFFFF, 'size'); // 7 bytes
+    roundtrip(t,         0x01FFFFFFFFFFFF, 'size'); // 8 bytes
+    roundtrip(t,  Number.MAX_SAFE_INTEGER, 'size'); // 9 bytes?
+    roundtrip(t,                        0, 'uint8');
+    roundtrip(t,                     0xFF, 'uint8');
+    roundtrip(t,                        0, 'uint16');
+    roundtrip(t,                   0xFFFF, 'uint16');
+    roundtrip(t,                        0, 'uint32');
+    roundtrip(t,               0xFFFFFFFF, 'uint32');
+    roundtrip(t,                        0, 'uint64');
+    roundtrip(t,  Number.MAX_SAFE_INTEGER, 'uint64');
+    roundtrip(t,                        0, 'int8');
+    roundtrip(t,                     0x7F, 'int8');
+    roundtrip(t,                    -0x80, 'int8');
+    roundtrip(t,                        0, 'int16');
+    roundtrip(t,                   0x7FFF, 'int16');
+    roundtrip(t,                  -0x8000, 'int16');
+    roundtrip(t,                        0, 'int32');
+    roundtrip(t,               0x7FFFFFFF, 'int32');
+    roundtrip(t,              -0x80000000, 'int32');
+    roundtrip(t,                        0, 'int64');
+    roundtrip(t,  Number.MAX_SAFE_INTEGER, 'int64');
+    roundtrip(t, -Number.MAX_SAFE_INTEGER, 'int64');
+
+    t.end();
+});
+
+test('string in bounds', function(t) {
+    var buffer = new Encoder().string('Some string').end();
+    var decoder = new Decoder(buffer);
 
     t.equal(decoder.string(), 'Some string');
     t.equal(decoder.end(), true);
+
+    t.end();
 })
