@@ -34,12 +34,12 @@ var socket = new WebSocket('ws://example.com/');
 socket.binaryType = 'arraybuffer';
 
 socket.onmessage = function(event) {
-    let decoder = new bitsparrow.Decoder(new Uint8Array(event.data));
+    var decoder = new bitsparrow.Decoder(new Uint8Array(event.data));
     // Read the data ...
 }
 
 socket.onpen = function() {
-    let encoder = new bitsparrow.Encoder().string('Hello World');
+    var encoder = new bitsparrow.Encoder().string('Hello World');
     // Send internal `ArrayBuffer` from `Uint8Array`
     socket.send(encoder.end().buffer);
 }
@@ -60,7 +60,7 @@ console.log(decoder.end()); // -> true
 
 Decoder takes a reference to the buffer and allows you to
 retrieve the values in order they were encoded. Calling the
-`end` method is optional, it will return true if you have
+`end` method is optional, it will return `true` if you have
 read the entire buffer, which can be handy if you are reading
 multiple messages stacked on a single buffer.
 
