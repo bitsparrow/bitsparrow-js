@@ -3,102 +3,28 @@
 
     // Simple way to detect if running under Node.js
     var IS_NODE = typeof window !== "object" && typeof global === "object";
+    var BufferType = IS_NODE ? Buffer : Uint8Array;
 
-    // TextEncoder / TextDecoder fallbacks using logic from:
-    // https://github.com/feross/buffer/bytes/master/index.js
     var TextEncoder = typeof window === 'object' ? window.TextEncoder : null;
     if (TextEncoder == null) {
         TextEncoder = function TextEncoder() {}
 
         TextEncoder.prototype = {
             encode: function(string) {
-                var units = Infinity,
-                    codePoint,
-                    length = string.length,
-                    leadSurrogate = null,
-                    bytes = [],
-                    i = 0;
+                string = encodeURIComponent(string);
+                var len = string.length;
+                var bytes = [];
+                var c;
 
-                for (; i < length; i++) {
-                    codePoint = string.charCodeAt(i);
+                for (var i = 0; i < len; i++) {
+                    c = string.charCodeAt(i);
 
-                    // is surrogate component
-                    if (codePoint > 0xD7FF && codePoint < 0xE000) {
-                        // last char was a lead
-                        if (leadSurrogate) {
-                            // 2 leads in a row
-                            if (codePoint < 0xDC00) {
-                                if ((units -= 3) > -1) bytes.push(0xEF, 0xBF, 0xBD);
-                                leadSurrogate = codePoint;
-                                continue;
-                            } else {
-                                // valid surrogate pair
-                                codePoint = leadSurrogate - 0xD800 << 10 | codePoint - 0xDC00 | 0x10000;
-                                leadSurrogate = null;
-                            }
-                        } else {
-                            // no lead yet
-                            if (codePoint > 0xDBFF) {
-                                // unexpected trail
-                                if ((units -= 3) > -1) bytes.push(0xEF, 0xBF, 0xBD);
-                                continue;
-                            } else if (i + 1 === length) {
-                                // unpaired lead
-                                if ((units -= 3) > -1) bytes.push(0xEF, 0xBF, 0xBD);
-                                continue;
-                            } else {
-                                // valid lead
-                                leadSurrogate = codePoint;
-                                continue;
-                            }
-                        }
-                    } else if (leadSurrogate) {
-                        // valid bmp char, but last char was a lead
-                        if ((units -= 3) > -1) bytes.push(0xEF, 0xBF, 0xBD);
-                        leadSurrogate = null;
-                    }
-
-                    // end utf8
-                    if (codePoint < 0x80) {
-                        if ((units -= 1) < 0) break;
-                        bytes.push(codePoint);
-                    } else if (codePoint < 0x800) {
-                        if ((units -= 2) < 0) break;
-                        bytes.push(
-                            codePoint >> 0x6 | 0xC0,
-                            codePoint & 0x3F | 0x80
-                        );
-                    } else if (codePoint < 0x10000) {
-                        if ((units -= 3) < 0) break;
-                        bytes.push(
-                            codePoint >> 0xC | 0xE0,
-                            codePoint >> 0x6 & 0x3F | 0x80,
-                            codePoint & 0x3F | 0x80
-                        );
-                    } else if (codePoint < 0x200000) {
-                        if ((units -= 4) < 0) break;
-                        bytes.push(
-                            codePoint >> 0x12 | 0xF0,
-                            codePoint >> 0xC & 0x3F | 0x80,
-                            codePoint >> 0x6 & 0x3F | 0x80,
-                            codePoint & 0x3F | 0x80
-                        );
-                    } else {
-                        throw new Error('Invalid code point');
-                    }
+                    bytes.push(c === 37 ? parseInt(string.substring(++i, ++i + 1), 16) : c);
                 }
 
                 return bytes;
             }
         };
-    }
-
-    function decodeUtf8Char(str) {
-        try {
-            return decodeURIComponent(str);
-        } catch (err) {
-            return String.fromCharCode(0xFFFD); // UTF 8 invalid char
-        }
     }
 
     var TextDecoder = typeof window === 'object' ? window.TextDecoder : null;
@@ -107,43 +33,40 @@
 
         TextDecoder.prototype = {
             decode: function(buffer) {
-                var result = '',
-                    temp = '',
-                    length = buffer.length,
-                    i = 0;
+                var len = buffer.length;
+                var string = '';
+                var c;
 
-                for (; i < length; i++) {
-                    if (buffer[i] <= 0x7F) {
-                        if (temp !== '') {
-                            result += decodeUtf8Char(temp);
-                            temp = '';
-                        }
-                        result += String.fromCharCode(buffer[i]);
-                    } else {
-                        temp += '%' + buffer[i].toString(16);
-                    }
+                for (var i = 0; i < len; i++) {
+                    c = buffer[i];
+
+                    string += c < 128 ? String.fromCharCode(c) : '%' + c.toString(16);
                 }
 
-                return result + decodeUtf8Char(temp);
+                return decodeURIComponent(string);
             },
         };
     }
 
-    var strToSlice = (function() {
+    var strToSlice = IS_NODE ? function (str) {
+        return new Buffer(str);
+    } : (function () {
         var encoder = new TextEncoder('utf-8');
-        return function(str) {
+        return function (str) {
             return encoder.encode(str);
         }
     })();
 
-    var sliceToStr = (function() {
+    var sliceToStr = IS_NODE ? function (slice) {
+        return slice.toString();
+    } : (function () {
         var decoder = new TextDecoder('utf-8');
-        return function(str) {
+        return function (str) {
             return decoder.decode(str);
         }
     })();
 
-    // Helper bufferfer and views to easily and cheapily convert types
+    // Helper buffer and views to easily and cheapily convert types
     var buffer = new ArrayBuffer(8),
         u8arr  = new Uint8Array(buffer),
         u16arr = new Uint16Array(buffer),
@@ -154,15 +77,92 @@
         f32arr = new Float32Array(buffer),
         f64arr = new Float64Array(buffer);
 
-    function writeType(value, data, tarr, bytes) {
+    function writeType16(value, data, tarr) {
         tarr[0] = value;
-        while (bytes--) data.push(u8arr[bytes]);
+        // You'd expect .push with mutliple arguments to be faster. It's not.
+        data.push(u8arr[1]);
+        data.push(u8arr[0]);
     }
 
-    function readType(decoder, tarr, bytes) {
-        while (bytes--) u8arr[bytes] = decoder.uint8();
+    function writeType32(value, data, tarr) {
+        tarr[0] = value;
+        // You'd expect .push with mutliple arguments to be faster. It's not.
+        data.push(u8arr[3]);
+        data.push(u8arr[2]);
+        data.push(u8arr[1]);
+        data.push(u8arr[0]);
+    }
+
+    function writeType64(value, data, tarr) {
+        tarr[0] = value;
+        // You'd expect .push with mutliple arguments to be faster. It's not.
+        data.push(u8arr[7]);
+        data.push(u8arr[6]);
+        data.push(u8arr[5]);
+        data.push(u8arr[4]);
+        data.push(u8arr[3]);
+        data.push(u8arr[2]);
+        data.push(u8arr[1]);
+        data.push(u8arr[0]);
+    }
+
+    function readType16(decoder, tarr) {
+        var end = decoder.index + 2;
+        if (end > decoder.length) throw new Error("Reading out of boundary");
+        var data = decoder.data;
+        var index = decoder.index;
+        decoder.index = end;
+        u8arr[1] = data[index];
+        u8arr[0] = data[index + 1];
         return tarr[0];
     }
+
+    function readType32(decoder, tarr) {
+        var end = decoder.index + 4;
+        if (end > decoder.length) throw new Error("Reading out of boundary");
+        var data = decoder.data;
+        var index = decoder.index;
+        decoder.index = end;
+        u8arr[3] = data[index];
+        u8arr[2] = data[index + 1];
+        u8arr[1] = data[index + 2];
+        u8arr[0] = data[index + 3];
+        return tarr[0];
+    }
+
+    function readType64(decoder, tarr) {
+        var end = decoder.index + 8;
+        if (end > decoder.length) throw new Error("Reading out of boundary");
+        var data = decoder.data;
+        var index = decoder.index;
+        decoder.index = end;
+        u8arr[7] = data[index];
+        u8arr[6] = data[index + 1];
+        u8arr[5] = data[index + 2];
+        u8arr[4] = data[index + 3];
+        u8arr[3] = data[index + 4];
+        u8arr[2] = data[index + 5];
+        u8arr[1] = data[index + 6];
+        u8arr[0] = data[index + 7];
+        return tarr[0];
+    }
+
+    // Because JavaScript Number type has enough bits to store 53 bit precision
+    // integers, but can only do binary operations on 32 bit *SIGNED* integers,
+    // all would-be-bitwise-operations on anything larger than 16 bit *UNSIGNED*
+    // integer needs to use floating point arithmetic - sad panda :(.
+    function brshift16(n) {
+        return Math.floor(n / 0x10000);
+    }
+
+    function brshift32(n) {
+        return Math.floor(n / 0x100000000);
+    }
+
+    function brshift48(n) {
+        return Math.floor(n / 0x1000000000000)
+    }
+
 
     function Encoder() {
         this.data = [];
@@ -182,32 +182,46 @@
         },
 
         uint32: function(uint32) {
-            writeType(uint32, this.data, u32arr, 4);
+            writeType32(uint32, this.data, u32arr);
+            return this;
+        },
+
+        uint64: function(uint64) {
+            writeType32(brshift32(uint64), this.data, u32arr);
+            writeType32(uint64, this.data, u32arr);
             return this;
         },
 
         int8: function(int8) {
-            writeType(int8, this.data, i8arr, 1);
+            i8arr[0] = int8;
+            this.data.push(u8arr[0]);
             return this;
         },
 
         int16: function(int16) {
-            writeType(int16, this.data, i16arr, 2);
+            writeType16(int16, this.data, i16arr);
             return this;
         },
 
         int32: function(int32) {
-            writeType(int32, this.data, i32arr, 4);
+            writeType32(int32, this.data, i32arr);
+            return this;
+        },
+
+        int64: function(int64) {
+            writeType32(brshift32(int64), this.data, i32arr);
+            var low = int64 % 0x100000000;
+            writeType32(low < 0 ? low + 0x100000000 : low, this.data, u32arr);
             return this;
         },
 
         float32: function(float32) {
-            writeType(float32, this.data, f32arr, 4);
+            writeType32(float32, this.data, f32arr);
             return this;
         },
 
         float64: function(float64) {
-            writeType(float64, this.data, f64arr, 8);
+            writeType64(float64, this.data, f64arr);
             return this;
         },
 
@@ -230,27 +244,63 @@
         },
 
         size: function(size) {
-            if (size > 0x3fffffff) {
+            // Max safe integer
+            if (size > 0x1FFFFFFFFFFFFF) {
                 throw new Error("Provided size is too long!");
             }
 
-            // can fit on 7 bits
-            if (size < 0x80) return this.uint8(size);
+            var data = this.data;
 
-            // can fit on 14 bits
-            if (size < 0x4000) return this.uint16(size | 0x8000);
+            if (size < 0x80) {
+                // 1 byte
+                data.push(size);
+            } else if (size < 0x4000) {
+                // 2 bytes
+                data.push((size >> 8) | 0x80);
+                data.push(size & 0xFF);
+            } else if (size < 0x200000) {
+                // 3 bytes
+                u32arr[0] = size;
+                data.push(u8arr[2] | 0xC0);
+                data.push(u8arr[1]);
+                data.push(u8arr[0]);
+            } else if (size <= 0x10000000) {
+                // 4 bytes
+                u32arr[0] = size;
+                data.push(u8arr[3] | 0xE0);
+                data.push(u8arr[2]);
+                data.push(u8arr[1]);
+                data.push(u8arr[0]);
+            } else if (size <= 0x800000000) {
+                // 5 bytes
+                data.push(brshift32(size) | 0xF0);
+                writeType32(size, data, u32arr);
+            } else if (size <= 0x40000000000) {
+                // 6 bytes
+                writeType16(brshift32(size) | 0xF800, data, u16arr);
+                writeType32(size, data, u32arr);
+            } else if (size <= 0x2000000000000) {
+                // 7 bytes
+                data.push(brshift48(size) | 0xFC);
+                writeType16(brshift32(size) & 0xFFFF, data, u16arr);
+                writeType32(size, data, u32arr);
+            } else {
+                // 8 bytes
+                writeType16(brshift48(size) | 0xFE00, data, u16arr);
+                writeType16(brshift32(size) % 0x100000000, data, u16arr);
+                writeType32(size, data, u32arr);
+            }
 
-            // use up to 30 bits
-            return this.uint32(size | 0xc0000000);
+            return this;
         },
 
         bytes: function(bytes) {
-            var len = bytes.length,
-                data = this.data,
-                i = 0;
+            var len = bytes.length;
+            var data = this.data;
+            var i = 0;
 
             this.size(len);
-            for (i = 0; i < len; i++) data.push(bytes[i]);
+            for (; i < len; i++) data.push(bytes[i]);
 
             return this;
         },
@@ -260,14 +310,11 @@
         },
 
         end: function() {
-            var data = this.data;
-            this.data = [];
+            var len = this.data.length;
+            var data = new BufferType(this.data);
 
-            if (IS_NODE) {
-                return new Buffer(data);
-            } else {
-                return new Uint8Array(data);
-            }
+            this.data = [];
+            return data;
         }
     };
 
@@ -283,37 +330,52 @@
     Decoder.prototype = {
         uint8: function() {
             if (this.index >= this.length) throw new Error("Reading out of boundary");
-            var uint8 = this.data[this.index];
-            this.index += 1;
-            return uint8;
+            return this.data[this.index++];
         },
 
         uint16: function() {
-            return (this.uint8() << 8) | this.uint8();
+            return readType16(this, u16arr);
         },
 
         uint32: function() {
-            return readType(this, u32arr, 4);
+            return readType32(this, u32arr);
+        },
+
+        uint64: function() {
+            return readType32(this, u32arr) * 0x100000000 + readType32(this, u32arr);
         },
 
         int8: function() {
-            return readType(this, i8arr, 1);
+            u8arr[0] = this.uint8();
+            return i8arr[0];
         },
 
         int16: function() {
-            return readType(this, i16arr, 2);
+            return readType16(this, i16arr);
         },
 
         int32: function() {
-            return readType(this, i32arr, 4);
+            return readType32(this, i32arr);
+        },
+
+        int64: function() {
+            var high = readType32(this, u32arr);
+            var low = readType32(this, u32arr);
+
+            if (high > 0x7FFFFFFF) {
+                high -= 0xFFFFFFFF;
+                low -= 0x100000000;
+            }
+
+            return high * 0x100000000 + low;
         },
 
         float32: function() {
-            return readType(this, f32arr, 4);
+            return readType32(this, f32arr);
         },
 
         float64: function() {
-            return readType(this, f64arr, 8);
+            return readType64(this, f64arr);
         },
 
         bool: function() {
@@ -336,24 +398,35 @@
             // 1 byte (no signature)
             if ((size & 128) === 0) return size;
 
-            var sig = size >>> 6;
-            // remove signature from the first byte
-            size = size & 63 /* 00111111 */;
+            var ext_bytes = 1;
+            size ^= 128;
 
-            // 2 bytes (signature is 10)
-            if (sig === 2) return size << 8 | this.uint8();
+            var allowance = 64;
 
-            // 4 bytes (signature is 11)
-            var i = 3;
-            u8arr[3] = size;
-            while (i--) u8arr[i] = this.uint8();
-            return u32arr[0];
+            while (allowance && (size & allowance)) {
+                size ^= allowance;
+                allowance >>= 1;
+                ext_bytes += 1;
+            }
+
+            while (ext_bytes) {
+                ext_bytes -= 1;
+                // Use regular math in case we run out of int32 precision
+                size = (size * 256) + this.uint8();
+            }
+
+            if (size > 0x1FFFFFFFFFFFFF) {
+                throw new Error('Decoded size exceeds 53bit precision range!')
+            }
+
+            return size;
         },
 
         bytes: function() {
             var size = this.size();
             if (this.index + size > this.length) throw new Error("Reading out of boundary");
-            var bytes = this.data.slice(this.index, this.index + size);
+            var bytes = IS_NODE ? this.data.slice(this.index, this.index + size)
+                                : this.data.subarray(this.index, this.index + size);
 
             this.index += size;
 
@@ -362,7 +435,7 @@
 
         string: function() {
             var bytes = this.bytes();
-            return sliceToStr(new Uint8Array(bytes));
+            return sliceToStr(new BufferType(bytes));
         },
 
         end: function() {

@@ -1,6 +1,10 @@
 # BitSparrow in JavaScript
 
-**[Homepage](http://bitsparrow.io/) - [API Documentation](https://github.com/bitsparrow/bitsparrow-js/blob/master/DOCS.md)**
+![](https://api.travis-ci.org/bitsparrow/bitsparrow-js.svg)
+
+**[Homepage](http://bitsparrow.io/) -**
+**[API Documentation](https://github.com/bitsparrow/bitsparrow-js/blob/master/DOCS.md) -**
+**[npm](https://www.npmjs.com/package/bitsparrow)**
 
 ## Encoding
 
@@ -63,6 +67,21 @@ retrieve the values in order they were encoded. Calling the
 `end` method is optional, it will return true if you have
 read the entire buffer, which can be handy if you are reading
 multiple messages stacked on a single buffer.
+
+## Performance
+
+The goal of this library is to reduce both the size and parsing time of data
+when compared to JSON or msgpack. While JavaScript lacks low level primitive
+number type transmutations, using pre-cached TypedArrays yields very fast
+results. You can run benchmarks with:
+
+```
+npm run bench
+```
+
+Most notably, fixed size number decoding, such as `float64` and `uint32`, is
+much faster than even the native JSON implementation in V8, with time per
+operation being less than 100 nanoseconds on most (even old) CPUs.
 
 # The MIT License (MIT)
 

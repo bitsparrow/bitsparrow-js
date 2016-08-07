@@ -11,27 +11,36 @@ represented as either `Buffer` (Node.js) or `Uint8Array`
 
 #### `uint8(number)` → `Encoder`
 Stores a `number` as an unsigned 8 bit integer on the buffer.
-Can represent values between 0 and 255.
 
 #### `uint16(number)` → `Encoder`
 Stores a `number` as an unsigned 16 bit integer on the buffer.
-Can represent values between 0 and 65,535.
 
 #### `uint32(number)` → `Encoder`
 Stores a `number` as an unsigned 32 bit integer on the buffer.
-Can represent values between 0 and 4,294,967,296.
+
+#### `uint64(number)` → `Encoder`
+Stores a `number` as an unsigned 64 bit integer on the buffer.
+
+**Note:** Because JavaScript `Number` type can only accurately
+represent 53 bits of precision, encoding a number larger than
+ `Number.MAX_SAFE_INTEGER` can lead to interoperability issues.
 
 #### `int8(number)` → `Encoder`
 Stores a `number` as a signed 8 bit integer on the buffer.
-Can represent values between -128 and 127.
 
 #### `int16(number)` → `Encoder`
 Stores a `number` as a signed 16 bit integer on the buffer.
-Can represent values between -32,768 and 32,767.
 
 #### `int32(number)` → `Encoder`
 Stores a `number` as a signed 32 bit integer on the buffer.
-Can represent values between -2,147,483,648 and 2,147,483,647.
+
+#### `int64(number)` → `Encoder`
+Stores a `number` as a signed 32 bit integer on the buffer.
+
+**Note:** Because JavaScript `Number` type can only accurately
+represent 53 bits of precision, encoding a number larger than
+ `Number.MAX_SAFE_INTEGER` or smaller than `-Number.MAX_SAFE_INTEGER`
+ can lead to interoperability issues.
 
 #### `float32(number)` → `Encoder`
 Stores a `number` as a single precision IEEE 754 floating
@@ -73,6 +82,10 @@ can have an arbitrary length. Detailed explanation on how
 BitSparrow stores `size` can be found on
 [the homepage](http://bitsparrow.io).
 
+**Note:** Because JavaScript `Number` type can only accurately
+represent 53 bits of precision, encoding a number larger than
+ `Number.MAX_SAFE_INTEGER` will throw an error.
+
 #### `bytes(Buffer | Uint8Array | Array<number>)` → `Encoder`
 Stores a `Buffer`, `Uint8Array` or a regular `Array` of
 `number`s on the buffer. Note that each number has to be an
@@ -107,6 +120,14 @@ the internal index and returns a number.
 Reads an unsigned 32 bit integer from the buffer, progresses
 the internal index and returns a number.
 
+#### `uint64()` → `number`
+Reads an unsigned 64 bit integer from the buffer, progresses
+the internal index and returns a number.
+
+**Note:** Because JavaScript `Number` type can only accurately
+represent 53 bits of precision, decoding a number larger than
+ `Number.MAX_SAFE_INTEGER` can lead to interoperability issues.
+
 #### `int8()` → `number`
 Reads a signed 8 bit integer from the buffer, progresses
 the internal index and returns a number.
@@ -118,6 +139,15 @@ the internal index and returns a number.
 #### `int32()` → `number`
 Reads a signed 32 bit integer from the buffer, progresses
 the internal index and returns a number.
+
+#### `int64()` → `number`
+Reads a signed 64 bit integer from the buffer, progresses
+the internal index and returns a number.
+
+**Note:** Because JavaScript `Number` type can only accurately
+represent 53 bits of precision, decoding a number larger than
+ `Number.MAX_SAFE_INTEGER` or smaller than `-Number.MAX_SAFE_INTEGER`
+ can lead to interoperability issues.
 
 #### `float32()` → `number`
 Reads an IEEE 754 single precision float from the buffer,
