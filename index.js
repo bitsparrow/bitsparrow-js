@@ -263,9 +263,9 @@
             } else if (size < 0x200000) {
                 // 3 bytes
                 u32arr[0] = size;
-                data.push(u8arr[3] | 0xC0);
-                data.push(u8arr[2]);
+                data.push(u8arr[2] | 0xC0);
                 data.push(u8arr[1]);
+                data.push(u8arr[0]);
             } else if (size <= 0x10000000) {
                 // 4 bytes
                 u32arr[0] = size;
