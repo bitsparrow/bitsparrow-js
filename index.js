@@ -290,21 +290,21 @@
             } else if (size <= 0x800000000) {
                 // 5 bytes
                 data.push(brshift32(size) | 0xF0);
-                writeType32(size % 0x100000000, data, u32arr);
+                writeType32(size, data, u32arr);
             } else if (size <= 0x40000000000) {
                 // 6 bytes
                 writeType16(brshift32(size) | 0xF800, data, u16arr);
-                writeType32(size & 0xFFFFFFFF, data, u32arr);
+                writeType32(size, data, u32arr);
             } else if (size <= 0x2000000000000) {
                 // 7 bytes
                 data.push(brshift48(size) | 0xFC);
                 writeType16(brshift32(size) & 0xFFFF, data, u16arr);
-                writeType32(size % 0x100000000, data, u32arr);
+                writeType32(size, data, u32arr);
             } else {
                 // 8 bytes
                 writeType16(brshift48(size) | 0xFE00, data, u16arr);
                 writeType16(brshift32(size) % 0x100000000, data, u16arr);
-                writeType32(size % 0x100000000, data, u32arr);
+                writeType32(size, data, u32arr);
             }
 
             return this;

@@ -136,8 +136,6 @@ test('eat own dog food', function (t) {
 });
 
 test('stacking bools', function(t) {
-    t.plan(13);
-
     var buffer = new Encoder()
                     .bool(true)
                     .bool(false)
@@ -152,6 +150,7 @@ test('stacking bools', function(t) {
                     .bool(true)
                     .end();
 
+    t.ok(buffer.equals(new Buffer([parseInt('11000101', 2), 0, 10, 1])), 'Stacking 8 booleans uses 1 byte');
     t.equal(buffer.length, 4, 'Stacking 8 booleans uses 1 byte');
 
     var decoder = new Decoder(buffer);
@@ -167,6 +166,8 @@ test('stacking bools', function(t) {
     t.equal(decoder.uint8(), 10);
     t.equal(decoder.bool(), true, 'Boolean stack resets on other types');
     t.equal(decoder.end(), true, 'Reads till the end');
+
+    t.end();
 });
 
 function roundtrip(t, value, type) {
@@ -180,14 +181,14 @@ test('Roundtripping', function(t) {
     roundtrip(t,                     true, 'bool');
     roundtrip(t,                    false, 'bool');
     roundtrip(t,                        0, 'size'); // 1 byte
-    roundtrip(t,                     0x7F, 'size'); // 2 bytes
-    roundtrip(t,                   0x3FFF, 'size'); // 3 bytes
-    roundtrip(t,                 0x1FFFFF, 'size'); // 4 bytes
-    roundtrip(t,               0x0FFFFFFF, 'size'); // 5 bytes
-    roundtrip(t,             0x07FFFFFFFF, 'size'); // 6 bytes
-    roundtrip(t,           0x03FFFFFFFFFF, 'size'); // 7 bytes
-    roundtrip(t,         0x01FFFFFFFFFFFF, 'size'); // 8 bytes
-    roundtrip(t,  Number.MAX_SAFE_INTEGER, 'size'); // 9 bytes?
+    roundtrip(t,                     0x7F, 'size'); // 1 byte
+    roundtrip(t,                   0x3FFF, 'size'); // 2 bytes
+    roundtrip(t,                 0x1FFFFF, 'size'); // 3 bytes
+    roundtrip(t,               0x0FFFFFFF, 'size'); // 4 bytes
+    roundtrip(t,             0x07FFFFFFFF, 'size'); // 5 bytes
+    roundtrip(t,           0x03FFFFFFFFFF, 'size'); // 6 bytes
+    roundtrip(t,         0x01FFFFFFFFFFFF, 'size'); // 7 bytes
+    roundtrip(t,  Number.MAX_SAFE_INTEGER, 'size'); // 8 bytes
     roundtrip(t,                        0, 'uint8');
     roundtrip(t,                     0xFF, 'uint8');
     roundtrip(t,                        0, 'uint16');
@@ -208,6 +209,25 @@ test('Roundtripping', function(t) {
     roundtrip(t,                        0, 'int64');
     roundtrip(t,  Number.MAX_SAFE_INTEGER, 'int64');
     roundtrip(t, -Number.MAX_SAFE_INTEGER, 'int64');
+
+    t.end();
+});
+
+function sizecheck(t, value, type, len) {
+    var buffer = new Encoder()[type](value).end();
+    t.equal(buffer.length, len, 'Size check '+type+' with 0x'+value.toString(16).toUpperCase());
+}
+
+test('Size checking', function(t) {
+    sizecheck(t,                       0, 'size', 1);
+    sizecheck(t,                    0x7F, 'size', 1);
+    sizecheck(t,                  0x3FFF, 'size', 2);
+    sizecheck(t,                0x1FFFFF, 'size', 3);
+    sizecheck(t,              0x0FFFFFFF, 'size', 4);
+    sizecheck(t,            0x07FFFFFFFF, 'size', 5);
+    sizecheck(t,          0x03FFFFFFFFFF, 'size', 6);
+    sizecheck(t,        0x01FFFFFFFFFFFF, 'size', 7);
+    sizecheck(t, Number.MAX_SAFE_INTEGER, 'size', 8);
 
     t.end();
 });
