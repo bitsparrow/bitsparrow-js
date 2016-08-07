@@ -35,7 +35,7 @@ Stores a `number` as a signed 16 bit integer on the buffer.
 Stores a `number` as a signed 32 bit integer on the buffer.
 
 #### `int64(number)` → `Encoder`
-Stores a `number` as a signed 32 bit integer on the buffer.
+Stores a `number` as a signed 64 bit integer on the buffer.
 
 **Note:** Because JavaScript `Number` type can only accurately
 represent 53 bits of precision, encoding a number larger than
