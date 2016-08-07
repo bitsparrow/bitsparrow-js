@@ -39,15 +39,11 @@ socket.onmessage = function(event) {
 }
 
 socket.onpen = function() {
-    let decoder = new bitsparrow.Encoder().string('Hello World');
+    let encoder = new bitsparrow.Encoder().string('Hello World');
     // Send internal `ArrayBuffer` from `Uint8Array`
-    socket.send(decoder.end().buffer);
+    socket.send(encoder.end().buffer);
 }
 ```
-
-Each method on the `Encoder` will consume the instance of the
-struct. If you need to break the monad chain, store the
-intermediate state of the encoder, e.g.:
 
 ## Decoding
 
