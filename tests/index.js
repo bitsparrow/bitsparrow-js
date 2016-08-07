@@ -89,8 +89,6 @@ var longText = "Sparrow /ˈsper.oʊ/\n\nUnder the classification used in the Han
 var bytes = new Buffer([1,2,3,4,5,6]);
 
 test('eat own dog food', function (t) {
-    t.plan(17);
-
     var buffer = new Encoder()
         .uint8(200)
         .uint16(9001)
@@ -133,6 +131,8 @@ test('eat own dog food', function (t) {
     // IEEE 754 float64 is the number type in JS, so it should match precisely
     t.equal(decoder.float64(), Math.PI, 'Can decode float 64');
     t.equal(decoder.end(), true, 'Reads till the end');
+
+    t.end();
 });
 
 test('stacking bools', function(t) {
@@ -232,6 +232,32 @@ test('Size checking', function(t) {
     t.end();
 });
 
+test('negative int from / to buffer', function(t) {
+    var buffer;
+
+    buffer = new Buffer([0xD6]);
+    t.ok(new Encoder().int8(-42).end().equals(buffer), 'encode -42 as int8');
+    t.equal(new Decoder(buffer).int8(), -42,           'decode -42 as int8');
+
+    buffer = new Buffer([0xFF, 0xD6]);
+    t.ok(new Encoder().int16(-42).end().equals(buffer), 'encode -42 as int16');
+    t.equal(new Decoder(buffer).int16(), -42,           'decode -42 as int16');
+
+    buffer = new Buffer([0xFF, 0xFF, 0xFF, 0xD6]);
+    t.ok(new Encoder().int32(-42).end().equals(buffer), 'encode -42 as int32');
+    t.equal(new Decoder(buffer).int32(), -42,           'decode -42 as int32');
+
+    buffer = new Buffer([0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xD6]);
+    t.ok(new Encoder().int64(-42).end().equals(buffer), 'encode -42 as int64');
+    t.equal(new Decoder(buffer).int64(), -42,           'decode -42 as int64');
+
+    buffer = new Buffer([0xFF, 0xFF, 0xFF, 0xFD, 0xAB, 0xF4, 0x1C, 0x01]);
+    t.ok(new Encoder().int64(-9999999999).end().equals(buffer), 'encode -9999999999 as int64');
+    t.equal(new Decoder(buffer).int64(), -9999999999,           'decode -9999999999 as int64');
+
+    t.end();
+});
+
 test('string in bounds', function(t) {
     var buffer = new Encoder().string('Some string').end();
     var decoder = new Decoder(buffer);
@@ -240,4 +266,4 @@ test('string in bounds', function(t) {
     t.equal(decoder.end(), true);
 
     t.end();
-})
+});

@@ -227,7 +227,7 @@
         int64: function(int64) {
             writeType32(brshift32(int64), this.data, i32arr);
             var low = int64 % 0x100000000;
-            writeType32(low < 0 ? -low : low, this.data, u32arr);
+            writeType32(low < 0 ? low + 0x100000000 : low, this.data, u32arr);
             return this;
         },
 
@@ -378,10 +378,15 @@
         },
 
         int64: function() {
-            var int64 = readType32(this, i32arr) * 0x100000000;
+            var high = readType32(this, u32arr);
             var low = readType32(this, u32arr);
-            return int64 < 0 ? int64 - (low - 0x100000000)
-                             : int64 + low;
+
+            if (high > 0x7FFFFFFF) {
+                high -= 0xFFFFFFFF;
+                low -= 0x100000000;
+            }
+
+            return high * 0x100000000 + low;
         },
 
         float32: function() {
