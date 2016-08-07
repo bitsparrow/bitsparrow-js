@@ -1,6 +1,10 @@
 # BitSparrow in JavaScript
 
-**[Homepage](http://bitsparrow.io/) - [API Documentation](https://github.com/bitsparrow/bitsparrow-js/blob/master/DOCS.md)**
+![](https://api.travis-ci.org/bitsparrow/bitsparrow-js.svg)
+
+**[Homepage](http://bitsparrow.io/) -**
+**[API Documentation](https://github.com/bitsparrow/bitsparrow-js/blob/master/DOCS.md)**
+**[npm](https://www.npmjs.com/package/bitsparrow)**
 
 ## Encoding
 
