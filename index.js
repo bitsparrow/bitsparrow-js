@@ -19,7 +19,6 @@
                 for (var i = 0; i < len; i++) {
                     c = string.charCodeAt(i);
 
-                    // 37 is '%'                   string.substring(i + 1, i + 2); i += 2
                     bytes.push(c === 37 ? parseInt(string.substring(++i, ++i + 1), 16) : c);
                 }
 
@@ -28,41 +27,23 @@
         };
     }
 
-    function decodeUtf8Char(str) {
-        try {
-            return decodeURIComponent(str);
-        } catch (err) {
-            return String.fromCharCode(0xFFFD); // UTF 8 invalid char
-        }
-    }
-
-
-    // TextDecoder fallback using logic from:
-    // https://github.com/feross/buffer/bytes/master/index.js
     var TextDecoder = typeof window === 'object' ? window.TextDecoder : null;
     if (TextDecoder == null) {
         TextDecoder = function TextDecoder() {}
 
         TextDecoder.prototype = {
             decode: function(buffer) {
-                var result = '',
-                    temp = '',
-                    length = buffer.length,
-                    i = 0;
+                var len = buffer.length;
+                var string = '';
+                var c;
 
-                for (; i < length; i++) {
-                    if (buffer[i] < 128) {
-                        if (temp !== '') {
-                            result += decodeUtf8Char(temp);
-                            temp = '';
-                        }
-                        result += String.fromCharCode(buffer[i]);
-                    } else {
-                        temp += '%' + buffer[i].toString(16);
-                    }
+                for (var i = 0; i < len; i++) {
+                    c = buffer[i];
+
+                    string += c < 128 ? String.fromCharCode(c) : '%' + c.toString(16);
                 }
 
-                return result + decodeUtf8Char(temp);
+                return decodeURIComponent(string);
             },
         };
     }
@@ -85,7 +66,7 @@
         }
     })();
 
-    // Helper bufferfer and views to easily and cheapily convert types
+    // Helper buffer and views to easily and cheapily convert types
     var buffer = new ArrayBuffer(8),
         u8arr  = new Uint8Array(buffer),
         u16arr = new Uint16Array(buffer),
@@ -98,12 +79,14 @@
 
     function writeType16(value, data, tarr) {
         tarr[0] = value;
+        // You'd expect .push with mutliple arguments to be faster. It's not.
         data.push(u8arr[1]);
         data.push(u8arr[0]);
     }
 
     function writeType32(value, data, tarr) {
         tarr[0] = value;
+        // You'd expect .push with mutliple arguments to be faster. It's not.
         data.push(u8arr[3]);
         data.push(u8arr[2]);
         data.push(u8arr[1]);
@@ -112,6 +95,7 @@
 
     function writeType64(value, data, tarr) {
         tarr[0] = value;
+        // You'd expect .push with mutliple arguments to be faster. It's not.
         data.push(u8arr[7]);
         data.push(u8arr[6]);
         data.push(u8arr[5]);
@@ -346,9 +330,7 @@
     Decoder.prototype = {
         uint8: function() {
             if (this.index >= this.length) throw new Error("Reading out of boundary");
-            var uint8 = this.data[this.index];
-            this.index += 1;
-            return uint8;
+            return this.data[this.index++];
         },
 
         uint16: function() {
@@ -360,8 +342,7 @@
         },
 
         uint64: function() {
-            var uint64 = readType32(this, u32arr) * 0x100000000;
-            return uint64 + readType32(this, u32arr);
+            return readType32(this, u32arr) * 0x100000000 + readType32(this, u32arr);
         },
 
         int8: function() {
@@ -428,14 +409,14 @@
                 ext_bytes += 1;
             }
 
-            if (ext_bytes > 7) {
-                throw new Error("Can't read size out of 53 bit range!");
-            }
-
             while (ext_bytes) {
                 ext_bytes -= 1;
                 // Use regular math in case we run out of int32 precision
                 size = (size * 256) + this.uint8();
+            }
+
+            if (size > 0x1FFFFFFFFFFFFF) {
+                throw new Error('Decoded size exceeds 53bit precision range!')
             }
 
             return size;
