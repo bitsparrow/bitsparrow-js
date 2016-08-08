@@ -10,98 +10,92 @@
 
     var BufferType = IS_NODE ? Buffer : Uint8Array;
 
-    var TextEncoder = typeof window === 'object' ? window.TextEncoder : null;
-    if (TextEncoder == null) {
-        TextEncoder = function TextEncoder() {}
-
-        var __ = 0;
-        var ASCII_DIGIT_LUT = new Uint8Array([
-        // 0   1   2   3   4   5   6   7   8   9   A   B   C   D   E   F
-          __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 0
-          __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 1
-          __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 2
-           0,  1,  2,  3,  4,  5,  6,  7,  8,  9, __, __, __, __, __, __, // 3
-          __, 10, 11, 12, 13, 14, 15, __, __, __, __, __, __, __, __, __, // 4
-          __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 5
-          __, 10, 11, 12, 13, 14, 15, __, __, __, __, __, __, __, __, __, // 6
-          __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 7
-          __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 8
-          __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 9
-          __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // A
-          __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // B
-          __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // C
-          __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // D
-          __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // E
-          __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // F
-        ]);
-
-        TextEncoder.prototype = {
-            encode: function(string) {
-                string = encodeURIComponent(string);
-                var len = string.length;
-                var bytes = [];
-                var c;
-                var i = 0;
-
-                while (i < len) {
-                    c = string.charCodeAt(i++);
-
-                    bytes.push(c === 37
-                        ? (ASCII_DIGIT_LUT[string.charCodeAt(i++)] << 4) | ASCII_DIGIT_LUT[string.charCodeAt(i++)]
-                        : c
-                    );
-                }
-
-                return bytes;
-            }
-        };
-    }
-
-    var TextDecoder = typeof window === 'object' ? window.TextDecoder : null;
-    if (TextDecoder == null) {
-        TextDecoder = function TextDecoder() {}
-
-        var URI_ENCODE_LUT = new Array(256);
-        var i = 0;
-        while (i < 128) URI_ENCODE_LUT[i] = String.fromCharCode(i++);
-        while (i < 256) URI_ENCODE_LUT[i] = '%' + (i++).toString(16).toUpperCase();
-
-        TextDecoder.prototype = {
-            decode: function(buffer) {
-                var len = buffer.length;
-                var string = '';
-                var i = 0;
-
-                while (i < len) string += URI_ENCODE_LUT[buffer[i++]];
-
-                return decodeURIComponent(string);
-            },
-        };
-    }
-
-    var strToSlice = IS_NODE
-        ? function (str) { return new Buffer(str); }
-        : (function() {
-            var encoder = new TextEncoder('utf-8');
-
-            return function (str) {
-                return encoder.encode(str);
-            }
-        })();
-
     var sliceBuffer = IS_NODE
         ? function(data, start, end) { return data.slice(start, end); }
         : function(data, start, end) { return data.subarray(start, end); };
 
-    var readString = IS_NODE
-        ? function(data, start, end) { return data.toString('utf8', start, end); }
-        : (function() {
-            var decoder = new TextDecoder('utf-8');
+    var decodeString = IS_NODE
+        ? function(buffer, i, end) { return buffer.toString('utf8', i, end); }
+        : function(buffer, i, end) {
+            var string = '';
+            var cp = 0;
 
-            return function(data, start, end) {
-                return decoder.decode(data.subarray(start, end))
+            while (i < end) {
+                cp = buffer[i++];
+                if (cp < 128) {
+                    string += String.fromCharCode(cp);
+                    continue;
+                }
+
+                if ((cp & 0x20) === 0) {
+                    // 2 bytes
+                    cp = (cp & 0x1F) << 6 |
+                         (buffer[i++] & 0x3F);
+
+                } else if ((cp & 0x10) === 0) {
+                    // 3 bytes
+                    cp = (cp & 0x0F)          << 16 |
+                         (buffer[i++] & 0x3F) << 6  |
+                         (buffer[i++] & 0x3F);
+
+                } else if ((cp & 0x08) === 0) {
+                    // 4 bytes
+                    cp = (cp & 0x07)          << 18 |
+                         (buffer[i++] & 0x3F) << 12 |
+                         (buffer[i++] & 0x3F) << 6  |
+                         (buffer[i++] & 0x3F);
+
+                }
+
+                if (cp >= 0x010000) {
+                    // A surrogate pair
+                    cp -= 0x010000;
+
+                    string += String.fromCharCode((cp >> 10) + 0xD800) +
+                              String.fromCharCode((cp & 0x3FF) + 0xDC00);
+                } else {
+                    string += String.fromCharCode(cp);
+                }
             }
-        })();
+
+            return string;
+        };
+
+    var encodeString = function(string) {
+        var len = string.length;
+        var bytes = [];
+        var cp = 0;
+        var i = 0;
+
+        while (i < len) {
+            cp = string.charCodeAt(i++);
+
+            if (cp < 128) {
+                bytes.push(cp);
+                continue;
+            }
+
+            if (cp < 0x800) {
+                // 2 bytes
+                bytes.push((cp >> 6)   | 0xC0);
+                bytes.push((cp & 0x3F) | 0x80);
+            } else if (cp >= 0xD800 && cp <= 0xDFFF) {
+                // 4 bytes - surrogate pair
+                cp = (((cp - 0xD800) << 10) | (string.charCodeAt(i++) - 0xDC00)) + 0x10000;
+                bytes.push((cp >> 18)          | 0xF0);
+                bytes.push(((cp >> 12) & 0x3F) | 0x80);
+                bytes.push(((cp >> 6)  & 0x3F) | 0x80);
+                bytes.push((cp         & 0x3F) | 0x80);
+            } else {
+                // 3 bytes
+                bytes.push((cp  >> 12) | 0xE0);
+                bytes.push(((cp >> 6)  & 0x3F) | 0x80);
+                bytes.push((cp         & 0x3F) | 0x80);
+            }
+        }
+
+        return bytes;
+    };
 
     // Helper buffer and views to easily and cheapily convert types
     var buffer = new ArrayBuffer(8),
@@ -300,22 +294,22 @@
                 data.push(u8arr[2] | 0xC0);
                 data.push(u8arr[1]);
                 data.push(u8arr[0]);
-            } else if (size <= 0x10000000) {
+            } else if (size < 0x10000000) {
                 // 4 bytes
                 u32arr[0] = size;
                 data.push(u8arr[3] | 0xE0);
                 data.push(u8arr[2]);
                 data.push(u8arr[1]);
                 data.push(u8arr[0]);
-            } else if (size <= 0x800000000) {
+            } else if (size < 0x800000000) {
                 // 5 bytes
                 data.push(brshift32(size) | 0xF0);
                 writeType32(size, data, u32arr);
-            } else if (size <= 0x40000000000) {
+            } else if (size < 0x40000000000) {
                 // 6 bytes
                 writeType16(brshift32(size) | 0xF800, data, u16arr);
                 writeType32(size, data, u32arr);
-            } else if (size <= 0x2000000000000) {
+            } else if (size < 0x2000000000000) {
                 // 7 bytes
                 data.push(brshift48(size) | 0xFC);
                 writeType16(brshift32(size) & 0xFFFF, data, u16arr);
@@ -342,7 +336,7 @@
         },
 
         string: function(string) {
-            return this.bytes(strToSlice(string));
+            return this.bytes(encodeString(string));
         },
 
         end: function() {
@@ -472,7 +466,7 @@
         string: function() {
             var end = this.size() + this.index;
             if (end > this.length) throw new Error("Reading out of boundary");
-            var string = readString(this.data, this.index, end);
+            var string = decodeString(this.data, this.index, end);
 
             this.index = end;
 

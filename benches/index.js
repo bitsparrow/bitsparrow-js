@@ -81,13 +81,23 @@ bench(function msgpack_encode_uint32() {
 });
 
 // ---- size decode ----
+
+buffer = new Encoder().size(127).end();
+bench(function decode_size_small() {
+    return new Decoder(buffer).size();
+});
+
 buffer = new Encoder().size(0xFFFFFF).end();
 bench(function decode_size() {
     return new Decoder(buffer).size();
 });
 
 // ---- size encode ----
-//
+
+bench(function encode_size_small() {
+    return new Encoder().size(127).end();
+});
+
 bench(function encode_size() {
     return new Encoder().size(0xFFFFFF).end();
 });
