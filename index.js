@@ -2,12 +2,38 @@
     'use strict';
 
     // Simple way to detect if running under Node.js
-    var IS_NODE = typeof window !== "object" && typeof global === "object";
+    // Setting env variable `BROWSER` to `1` will force Node.js use `Uint8Array`
+    // instead of it's own `Buffer` type, emulating the browser behavior.
+    var IS_NODE = typeof process === 'object'
+               && typeof process.env === 'object'
+               && process.env.BROWSER !== '1';
+
     var BufferType = IS_NODE ? Buffer : Uint8Array;
 
     var TextEncoder = typeof window === 'object' ? window.TextEncoder : null;
     if (TextEncoder == null) {
         TextEncoder = function TextEncoder() {}
+
+        var __ = 0;
+        var ASCII_DIGIT_LUT = new Uint8Array([
+        // 0   1   2   3   4   5   6   7   8   9   A   B   C   D   E   F
+          __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 0
+          __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 1
+          __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 2
+           0,  1,  2,  3,  4,  5,  6,  7,  8,  9, __, __, __, __, __, __, // 3
+          __, 10, 11, 12, 13, 14, 15, __, __, __, __, __, __, __, __, __, // 4
+          __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 5
+          __, 10, 11, 12, 13, 14, 15, __, __, __, __, __, __, __, __, __, // 6
+          __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 7
+          __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 8
+          __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 9
+          __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // A
+          __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // B
+          __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // C
+          __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // D
+          __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // E
+          __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // F
+        ]);
 
         TextEncoder.prototype = {
             encode: function(string) {
@@ -15,11 +41,15 @@
                 var len = string.length;
                 var bytes = [];
                 var c;
+                var i = 0;
 
-                for (var i = 0; i < len; i++) {
-                    c = string.charCodeAt(i);
+                while (i < len) {
+                    c = string.charCodeAt(i++);
 
-                    bytes.push(c === 37 ? parseInt(string.substring(++i, ++i + 1), 16) : c);
+                    bytes.push(c === 37
+                        ? (ASCII_DIGIT_LUT[string.charCodeAt(i++)] << 4) | ASCII_DIGIT_LUT[string.charCodeAt(i++)]
+                        : c
+                    );
                 }
 
                 return bytes;
@@ -31,41 +61,47 @@
     if (TextDecoder == null) {
         TextDecoder = function TextDecoder() {}
 
+        var URI_ENCODE_LUT = new Array(256);
+        var i = 0;
+        while (i < 128) URI_ENCODE_LUT[i] = String.fromCharCode(i++);
+        while (i < 256) URI_ENCODE_LUT[i] = '%' + (i++).toString(16).toUpperCase();
+
         TextDecoder.prototype = {
             decode: function(buffer) {
                 var len = buffer.length;
                 var string = '';
-                var c;
+                var i = 0;
 
-                for (var i = 0; i < len; i++) {
-                    c = buffer[i];
-
-                    string += c < 128 ? String.fromCharCode(c) : '%' + c.toString(16);
-                }
+                while (i < len) string += URI_ENCODE_LUT[buffer[i++]];
 
                 return decodeURIComponent(string);
             },
         };
     }
 
-    var strToSlice = IS_NODE ? function (str) {
-        return new Buffer(str);
-    } : (function () {
-        var encoder = new TextEncoder('utf-8');
-        return function (str) {
-            return encoder.encode(str);
-        }
-    })();
+    var strToSlice = IS_NODE
+        ? function (str) { return new Buffer(str); }
+        : (function() {
+            var encoder = new TextEncoder('utf-8');
 
-    var readString = IS_NODE ? function(data, start, end) {
-        return data.toString('utf8', start, end);
-    } : (function() {
-        var decoder = new TextDecoder('utf-8');
+            return function (str) {
+                return encoder.encode(str);
+            }
+        })();
 
-        return function(data, start, end) {
-            return decoder.decode(data.subarray(start, end))
-        }
-    })();
+    var sliceBuffer = IS_NODE
+        ? function(data, start, end) { return data.slice(start, end); }
+        : function(data, start, end) { return data.subarray(start, end); };
+
+    var readString = IS_NODE
+        ? function(data, start, end) { return data.toString('utf8', start, end); }
+        : (function() {
+            var decoder = new TextDecoder('utf-8');
+
+            return function(data, start, end) {
+                return decoder.decode(data.subarray(start, end))
+            }
+        })();
 
     // Helper buffer and views to easily and cheapily convert types
     var buffer = new ArrayBuffer(8),
@@ -297,10 +333,10 @@
         bytes: function(bytes) {
             var len = bytes.length;
             var data = this.data;
-            var i = 0;
-
             this.size(len);
-            for (; i < len; i++) data.push(bytes[i]);
+
+            var i = 0;
+            while (i < len) data.push(bytes[i++]);
 
             return this;
         },
@@ -319,7 +355,7 @@
     };
 
     function Decoder(data) {
-        if (data == null || data.length == null) throw new Error("Invalid type");
+        if (data == null || data.slice == null) throw new Error("Invalid type");
         this.data = data.constructor === BufferType ? data : new BufferType(data);
         data.alloc;
         this.index = 0;
@@ -424,19 +460,22 @@
         },
 
         bytes: function() {
-            var size = this.size();
-            if (this.index + size > this.length) throw new Error("Reading out of boundary");
-            var bytes = this.data.slice(this.index, this.index + size);
+            var end = this.size() + this.index;
+            if (end > this.length) throw new Error("Reading out of boundary");
+            var bytes = sliceBuffer(this.data, this.index, end);
 
-            this.index += size;
+            this.index = end;
 
             return bytes;
         },
 
         string: function() {
             var end = this.size() + this.index;
+            if (end > this.length) throw new Error("Reading out of boundary");
             var string = readString(this.data, this.index, end);
+
             this.index = end;
+
             return string;
         },
 

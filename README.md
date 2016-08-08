@@ -34,7 +34,7 @@ var socket = new WebSocket('ws://example.com/');
 socket.binaryType = 'arraybuffer';
 
 socket.onmessage = function(event) {
-    var decoder = new bitsparrow.Decoder(new Uint8Array(event.data));
+    var decoder = new bitsparrow.Decoder(event.data);
     // Read the data ...
 }
 
