@@ -9,6 +9,21 @@ var buffer = new Encoder()
                  .float32(42.1337)
                  .end();
 
+function arrayEq(a, b) {
+    var aLen = a.length;
+    var bLen = b.length;
+
+    if (aLen !== bLen) {
+        return false;
+    }
+
+    for (var i = 0; i < aLen; i++) {
+        if (a[i] !== b[i]) return false;
+    }
+
+    return true;
+}
+
 var expected = new Buffer([
     0xc8,0x23,0x29,0x49,0x96,0x02,0xd2,0xd6,0x8a,0xd0,0xb6,0x69,0xfd,
     0x2e,0x0f,0x42,0x69,0x74,0x53,0x70,0x61,0x72,0x72,0x6f,0x77,0x20,
@@ -117,7 +132,7 @@ test('eat own dog food', function (t) {
         .float64(Math.PI)
         .end();
 
-    t.ok(expected.equals(buffer), 'Encoding matches predefined data');
+    t.ok(arrayEq(expected, buffer), 'Encoding matches predefined data');
 
     var decoder = new Decoder(buffer);
 
@@ -129,7 +144,7 @@ test('eat own dog food', function (t) {
     t.equal(decoder.int32(), -1234567890, 'Can decode int32');
     t.equal(decoder.string(), 'BitSparrow 🐦', 'Can decode utf8 strings');
     t.equal(decoder.string(), longText, 'Can decode long utf8 strings');
-    t.ok(bytes.equals(decoder.bytes()), 'Can decode byte buffers');
+    t.ok(arrayEq(bytes, decoder.bytes()), 'Can decode byte buffers');
     t.equal(decoder.size(), 100, 'Can decode size < 128');
     t.equal(decoder.size(), 10000, 'Can decode size < 16384');
     t.equal(decoder.size(), 1000000, 'Can decode size > 16384');
@@ -160,7 +175,7 @@ test('stacking bools', function(t) {
                     .bool(true)
                     .end();
 
-    t.ok(buffer.equals(new Buffer([parseInt('11000101', 2), 0, 10, 1])), 'Stacking 8 booleans uses 1 byte');
+    t.ok(arrayEq(buffer, [parseInt('11000101', 2), 0, 10, 1]), 'Stacking 8 booleans uses 1 byte');
     t.equal(buffer.length, 4, 'Stacking 8 booleans uses 1 byte');
 
     var decoder = new Decoder(buffer);
@@ -246,24 +261,24 @@ test('negative int from / to buffer', function(t) {
     var buffer;
 
     buffer = new Buffer([0xD6]);
-    t.ok(new Encoder().int8(-42).end().equals(buffer), 'encode -42 as int8');
-    t.equal(new Decoder(buffer).int8(), -42,           'decode -42 as int8');
+    t.ok(arrayEq(new Encoder().int8(-42).end(), buffer), 'encode -42 as int8');
+    t.equal(new Decoder(buffer).int8(), -42,             'decode -42 as int8');
 
     buffer = new Buffer([0xFF, 0xD6]);
-    t.ok(new Encoder().int16(-42).end().equals(buffer), 'encode -42 as int16');
-    t.equal(new Decoder(buffer).int16(), -42,           'decode -42 as int16');
+    t.ok(arrayEq(new Encoder().int16(-42).end(), buffer), 'encode -42 as int16');
+    t.equal(new Decoder(buffer).int16(), -42,             'decode -42 as int16');
 
     buffer = new Buffer([0xFF, 0xFF, 0xFF, 0xD6]);
-    t.ok(new Encoder().int32(-42).end().equals(buffer), 'encode -42 as int32');
-    t.equal(new Decoder(buffer).int32(), -42,           'decode -42 as int32');
+    t.ok(arrayEq(new Encoder().int32(-42).end(), buffer), 'encode -42 as int32');
+    t.equal(new Decoder(buffer).int32(), -42,             'decode -42 as int32');
 
     buffer = new Buffer([0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xD6]);
-    t.ok(new Encoder().int64(-42).end().equals(buffer), 'encode -42 as int64');
-    t.equal(new Decoder(buffer).int64(), -42,           'decode -42 as int64');
+    t.ok(arrayEq(new Encoder().int64(-42).end(), buffer), 'encode -42 as int64');
+    t.equal(new Decoder(buffer).int64(), -42,             'decode -42 as int64');
 
     buffer = new Buffer([0xFF, 0xFF, 0xFF, 0xFD, 0xAB, 0xF4, 0x1C, 0x01]);
-    t.ok(new Encoder().int64(-9999999999).end().equals(buffer), 'encode -9999999999 as int64');
-    t.equal(new Decoder(buffer).int64(), -9999999999,           'decode -9999999999 as int64');
+    t.ok(arrayEq(new Encoder().int64(-9999999999).end(), buffer), 'encode -9999999999 as int64');
+    t.equal(new Decoder(buffer).int64(), -9999999999,             'decode -9999999999 as int64');
 
     t.end();
 });

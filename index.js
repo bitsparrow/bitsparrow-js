@@ -57,12 +57,13 @@
         }
     })();
 
-    var sliceToStr = IS_NODE ? function (slice) {
-        return slice.toString();
-    } : (function () {
+    var readString = IS_NODE ? function(data, start, end) {
+        return data.toString('utf8', start, end);
+    } : (function() {
         var decoder = new TextDecoder('utf-8');
-        return function (str) {
-            return decoder.decode(str);
+
+        return function(data, start, end) {
+            return decoder.decode(data.subarray(start, end))
         }
     })();
 
@@ -162,7 +163,6 @@
     function brshift48(n) {
         return Math.floor(n / 0x1000000000000)
     }
-
 
     function Encoder() {
         this.data = [];
@@ -320,7 +320,8 @@
 
     function Decoder(data) {
         if (data == null || data.length == null) throw new Error("Invalid type");
-        this.data = data;
+        this.data = data.constructor === BufferType ? data : new BufferType(data);
+        data.alloc;
         this.index = 0;
         this.length = data.length;
         this.boolIndex = -1;
@@ -425,8 +426,7 @@
         bytes: function() {
             var size = this.size();
             if (this.index + size > this.length) throw new Error("Reading out of boundary");
-            var bytes = IS_NODE ? this.data.slice(this.index, this.index + size)
-                                : this.data.subarray(this.index, this.index + size);
+            var bytes = this.data.slice(this.index, this.index + size);
 
             this.index += size;
 
@@ -434,8 +434,10 @@
         },
 
         string: function() {
-            var bytes = this.bytes();
-            return sliceToStr(new BufferType(bytes));
+            var end = this.size() + this.index;
+            var string = readString(this.data, this.index, end);
+            this.index = end;
+            return string;
         },
 
         end: function() {
