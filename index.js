@@ -47,7 +47,6 @@
                          (buffer[i++] & 0x3F) << 12 |
                          (buffer[i++] & 0x3F) << 6  |
                          (buffer[i++] & 0x3F);
-
                 }
 
                 if (cp >= 0x010000) {
@@ -278,11 +277,6 @@
         },
 
         size: function(size) {
-            // Max safe integer
-            if (size > 0x1FFFFFFFFFFFFF) {
-                throw new Error("Provided size is too long!");
-            }
-
             var data = this.data;
 
             if (size < 0x80) {
@@ -318,11 +312,13 @@
                 data.push(brshift48(size) | 0xFC);
                 writeType16(brshift32(size) & 0xFFFF, data, u16arr);
                 writeType32(size, data, u32arr);
-            } else {
-                // 8 bytes
+            } else if (size <= 0x1FFFFFFFFFFFFF) {
+                // 8 bytes (MAX_SAFE_INTEGER)
                 writeType16(brshift48(size) | 0xFE00, data, u16arr);
                 writeType16(brshift32(size) % 0x100000000, data, u16arr);
                 writeType32(size, data, u32arr);
+            } else {
+                throw new Error("Provided size is too long!");
             }
 
             return this;
@@ -482,7 +478,7 @@
         }
     };
 
-    if (module.exports != null && exports === module.exports) {
+    if (typeof module !== 'undefined' && module.exports != null && exports === module.exports) {
         exports.Encoder = Encoder;
         exports.Decoder = Decoder;
     } else {

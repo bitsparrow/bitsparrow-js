@@ -1,5 +1,5 @@
-const { Encoder, Decoder } = require('../index.js');
-const msgpack = require("msgpack-lite");
+/* OPEN index.html from the main folder */
+const { Encoder, Decoder } = bitsparrow;
 
 let buffer;
 
@@ -7,14 +7,14 @@ function bench(iter) {
     const maxIterations = 1000000;
     let iterations = maxIterations;
 
-    const start = process.hrtime();
+    const start = performance.now();
 
     while (iterations--) iter();
 
-    const time = process.hrtime(start);
-    totalNanos = time[1] + (1e9 * time[0]);
+    const totalNanos = (performance.now() - start) * 1e6;
     const average = totalNanos / maxIterations;
     const iterPerSec = 1e9 / average;
+
 
     console.log(`Benching ${iter.name}`);
     console.log(`- ${Math.round(average)}ns per iteration (${iterPerSec | 0} ops/sec)`);
