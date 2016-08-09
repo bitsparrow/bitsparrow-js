@@ -30,18 +30,18 @@
                     continue;
                 }
 
-                if ((cp & 0x20) === 0) {
+                if ((cp & 0xE0) === 0xC0) {
                     // 2 bytes
                     cp = (cp & 0x1F) << 6 |
                          (buffer[i++] & 0x3F);
 
-                } else if ((cp & 0x10) === 0) {
+                } else if ((cp & 0xF0) === 0xE0) {
                     // 3 bytes
-                    cp = (cp & 0x0F)          << 16 |
+                    cp = (cp & 0x0F)          << 12 |
                          (buffer[i++] & 0x3F) << 6  |
                          (buffer[i++] & 0x3F);
 
-                } else if ((cp & 0x08) === 0) {
+                } else if ((cp & 0xF8) === 0xF0) {
                     // 4 bytes
                     cp = (cp & 0x07)          << 18 |
                          (buffer[i++] & 0x3F) << 12 |

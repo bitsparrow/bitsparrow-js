@@ -198,8 +198,9 @@ test('stacking bools', function(t) {
 function roundtrip(t, value, type) {
     var buffer = new Encoder()[type](value).end();
     var decoder = new Decoder(buffer);
-    t.equal(decoder[type](), value, 'Roundtrip '+type+' with 0x'+value.toString(16).toUpperCase());
-    t.ok(decoder.end(), 'Roundtrip '+type+' in bounds');
+    var valueStr = typeof value === 'number' ? '0x' + value.toString(16).toUpperCase() : JSON.stringify(value);
+    t.equal(decoder[type](), value, 'Roundtrip ' + type + ' with ' + valueStr);
+    t.ok(decoder.end(), 'Roundtrip ' + type + ' in bounds');
 }
 
 test('Roundtripping', function(t) {
@@ -234,6 +235,8 @@ test('Roundtripping', function(t) {
     roundtrip(t,                        0, 'int64');
     roundtrip(t,  Number.MAX_SAFE_INTEGER, 'int64');
     roundtrip(t, -Number.MAX_SAFE_INTEGER, 'int64');
+    roundtrip(t,          "BitSparrow 🐦", 'string');
+    roundtrip(t, "考還其政戲，世導因利他家知求等", 'string');
 
     t.end();
 });
