@@ -10,10 +10,13 @@
 
     var BufferType = IS_NODE ? Buffer : Uint8Array;
 
+    // Generic buffer slicing. Calling Buffer.slice or Uint8Array.subarray returns
+    // a view without copying underlying data.
     var sliceBuffer = IS_NODE
         ? function(data, start, end) { return data.slice(start, end); }
         : function(data, start, end) { return data.subarray(start, end); };
 
+    // Read a JavaScript UTF-16 String from a UTF-8 encoded array-like buffer.
     var decodeString = IS_NODE
         ? function(buffer, i, end) { return buffer.toString('utf8', i, end); }
         : function(buffer, i, end) {
@@ -61,6 +64,7 @@
             return string;
         };
 
+    // Write a JavaScript string to a UTF-8 encoded byte array.
     var encodeString = function(string) {
         var len = string.length;
         var bytes = [];
@@ -349,7 +353,7 @@
     };
 
     function Decoder(data) {
-        if (data == null || data.slice == null) throw new Error("Invalid type");
+        if (data == null || (data.length == null && data.constructor !== ArrayBuffer)) throw new Error("Invalid type");
         this.data = data.constructor === BufferType ? data : new BufferType(data);
         data.alloc;
         this.index = 0;
