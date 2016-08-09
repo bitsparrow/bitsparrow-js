@@ -3,7 +3,9 @@ const msgpack = require("msgpack-lite");
 
 let buffer;
 
-function bench(iter) {
+function bench(name, iter) {
+    console.log(`Benching ${name}`);
+
     const maxIterations = 1000000;
     let iterations = maxIterations;
 
@@ -16,7 +18,6 @@ function bench(iter) {
     const average = totalNanos / maxIterations;
     const iterPerSec = 1e9 / average;
 
-    console.log(`Benching ${iter.name}`);
     console.log(`- ${Math.round(average)}ns per iteration (${iterPerSec | 0} ops/sec)`);
     console.log('');
 }
@@ -24,89 +25,89 @@ function bench(iter) {
 // ---- float64 decode ----
 
 buffer = new Encoder().float64(3.141592653589793).end();
-bench(function decode_float64() {
+bench('decode float64 - BitSparrow', function() {
     return new Decoder(buffer).float64();
 });
 
-bench(function json_parse_float64() {
+bench('decode float64 - JSON', function() {
     return JSON.parse("3.141592653589793");
 });
 
 buffer = msgpack.encode(3.141592653589793);
-bench(function msgpack_decode_float64() {
+bench('decode float64 - msgpack-lite', function() {
     return msgpack.decode(buffer);
 });
 
 // ---- float64 encode ----
 
-bench(function encode_float64() {
+bench('encode float64 - BitSparrow', function() {
     return new Encoder().float64(3.141592653589793).end();
 });
 
-bench(function json_stringify_float64() {
+bench('encode float64 - JSON', function() {
     return JSON.stringify(3.141592653589793);
 });
 
-bench(function msgpack_encode_float64() {
+bench('encode float64 - msgpack-lite', function() {
     return msgpack.encode(3.141592653589793);
 });
 
 // ---- uint32 decode ----
 
 buffer = new Encoder().uint32(0xFFFFFFFF).end();
-bench(function decode_uint32() {
+bench('decode uint32 - BitSparrow', function() {
     return new Decoder(buffer).uint32();
 });
 
-bench(function json_parse_uint32() {
+bench('decode uint32 - JSON', function() {
     return JSON.parse("4294967295");
 });
 
 buffer = msgpack.encode(0xFFFFFFFF);
-bench(function msgpack_decode_uint32() {
+bench('decode uint32 - msgpack-lite', function() {
     return msgpack.decode(buffer);
 });
 
 // ---- uint32 encode ----
 
-bench(function encode_uint32() {
+bench('encode uint32 - BitSparrow', function() {
     return new Encoder().uint32(0xFFFFFFFF).end();
 });
 
-bench(function json_stringify_uint32() {
+bench('encode uint32 - JSON', function() {
     return JSON.stringify(0xFFFFFFFF);
 });
 
-bench(function msgpack_encode_uint32() {
+bench('encode uint32 - msgpack-lite', function() {
     return msgpack.encode(0xFFFFFFFF);
 });
 
 // ---- string decode ----
 
 buffer = new Encoder().string("BitSparrow 🐦").end();
-bench(function decode_string() {
+bench('decode string - BitSparrow', function() {
     return new Decoder(buffer).string();
 });
 
-bench(function json_parse_string() {
+bench('decode string - JSON', function() {
     return JSON.parse("\"BitSparrow 🐦\"");
 });
 
 buffer = new msgpack.encode("BitSparrow 🐦");
-bench(function msgpack_decode_string() {
+bench('decode string - msgpack-lite', function() {
     return msgpack.decode(buffer);
 });
 
 // ---- string encode ----
 
-bench(function encode_string() {
+bench('encode string - BitSparrow', function() {
     return new Encoder().string("BitSparrow 🐦").end();
 });
 
-bench(function json_stringify_string() {
+bench('encode string - JSON', function() {
     return JSON.stringify("BitSparrow 🐦");
 });
 
-bench(function msgpack_encode_string() {
+bench('encode string - msgpack-lite', function() {
     return msgpack.encode("BitSparrow 🐦");
 });
