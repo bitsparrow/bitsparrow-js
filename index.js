@@ -53,8 +53,7 @@
                     // A surrogate pair
                     cp -= 0x010000;
 
-                    string += String.fromCharCode((cp >> 10) + 0xD800) +
-                              String.fromCharCode((cp & 0x3FF) + 0xDC00);
+                    string += String.fromCharCode((cp >> 10) + 0xD800, (cp & 0x3FF) + 0xDC00);
                 } else {
                     string += String.fromCharCode(cp);
                 }
@@ -340,9 +339,7 @@
         },
 
         end: function() {
-            var len = this.data.length;
             var data = new BufferType(this.data);
-
             this.data = [];
             return data;
         }
@@ -351,7 +348,6 @@
     function Decoder(data) {
         if (data == null || (data.length == null && data.constructor !== ArrayBuffer)) throw new Error("Invalid type");
         this.data = data.constructor === BufferType ? data : new BufferType(data);
-        data.alloc;
         this.index = 0;
         this.length = data.length;
         this.boolIndex = -1;
