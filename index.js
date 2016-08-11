@@ -89,16 +89,16 @@
                 // 2 bytes
                 bytes[pos++] = (cp >> 6)   | 0xC0;
                 bytes[pos++] = (cp & 0x3F) | 0x80;
-            } else if (cp >= 0xD800 && cp <= 0xDFFF) {
+            } else if (cp < 0xD800 || cp > 0xDFFF) {
+                // 3 bytes
+                bytes[pos++] = (cp  >> 12) | 0xE0;
+                bytes[pos++] = ((cp >> 6)  & 0x3F) | 0x80;
+                bytes[pos++] = (cp         & 0x3F) | 0x80;
+            } else {
                 // 4 bytes - surrogate pair
                 cp = (((cp - 0xD800) << 10) | (string.charCodeAt(i++) - 0xDC00)) + 0x10000;
                 bytes[pos++] = (cp >> 18)          | 0xF0;
                 bytes[pos++] = ((cp >> 12) & 0x3F) | 0x80;
-                bytes[pos++] = ((cp >> 6)  & 0x3F) | 0x80;
-                bytes[pos++] = (cp         & 0x3F) | 0x80;
-            } else {
-                // 3 bytes
-                bytes[pos++] = (cp  >> 12) | 0xE0;
                 bytes[pos++] = ((cp >> 6)  & 0x3F) | 0x80;
                 bytes[pos++] = (cp         & 0x3F) | 0x80;
             }
@@ -169,7 +169,7 @@
 
     var prealloc = IS_NODE ? null : new ArrayBuffer(2048);
     var preallocView = IS_NODE ? null : new DataView(prealloc);
-    var preallocBytes = IS_NODE ? Buffer.allocUnsafe(2048) : new Uint8Array(prealloc);
+    var preallocBytes = IS_NODE ? Buffer.allocUnsafe != null ? Buffer.allocUnsafe(2048) : new Buffer(2048) : new Uint8Array(prealloc);
 
     function Encoder() {
         // this.data = [];
