@@ -16,12 +16,19 @@
         ? function(data, start, end) { return data.slice(start, end); }
         : function(data, start, end) { return data.subarray(start, end); };
 
+    var utf8decoder = typeof TextDecoder === 'function' ? new TextDecoder('utf-8') : null;
+
     // Read a JavaScript UTF-16 String from a UTF-8 encoded array-like buffer.
     var decodeString = IS_NODE
-        ? function(buffer, i, end) { return buffer.toString('utf8', i, end); }
-        : function(buffer, i, end) {
+        ? function(buffer, start, len) { return buffer.toString('utf8', start, start + len); }
+        : function(buffer, start, len) {
+            if (len > 128 && utf8decoder !== null) {
+                return utf8decoder.decode(buffer.subarray(start, start + len));
+            }
             var string = '';
             var cp = 0;
+            var i = start;
+            var end = i + len;
 
             while (i < end) {
                 cp = buffer[i++];
@@ -29,6 +36,7 @@
                     string += String.fromCharCode(cp);
                     continue;
                 }
+
 
                 if ((cp & 0xE0) === 0xC0) {
                     // 2 bytes
@@ -63,81 +71,52 @@
         };
 
     // Write a JavaScript string to a UTF-8 encoded byte array.
-    var encodeString = function(string) {
+    var encodeString = function(string, bytes, offset) {
         var len = string.length;
-        var bytes = [];
         var cp = 0;
         var i = 0;
+        var pos = offset;
 
         while (i < len) {
             cp = string.charCodeAt(i++);
 
             if (cp < 128) {
-                bytes.push(cp);
+                bytes[pos++] = cp;
                 continue;
             }
 
             if (cp < 0x800) {
                 // 2 bytes
-                bytes.push((cp >> 6)   | 0xC0);
-                bytes.push((cp & 0x3F) | 0x80);
+                bytes[pos++] = (cp >> 6)   | 0xC0;
+                bytes[pos++] = (cp & 0x3F) | 0x80;
             } else if (cp >= 0xD800 && cp <= 0xDFFF) {
                 // 4 bytes - surrogate pair
                 cp = (((cp - 0xD800) << 10) | (string.charCodeAt(i++) - 0xDC00)) + 0x10000;
-                bytes.push((cp >> 18)          | 0xF0);
-                bytes.push(((cp >> 12) & 0x3F) | 0x80);
-                bytes.push(((cp >> 6)  & 0x3F) | 0x80);
-                bytes.push((cp         & 0x3F) | 0x80);
+                bytes[pos++] = (cp >> 18)          | 0xF0;
+                bytes[pos++] = ((cp >> 12) & 0x3F) | 0x80;
+                bytes[pos++] = ((cp >> 6)  & 0x3F) | 0x80;
+                bytes[pos++] = (cp         & 0x3F) | 0x80;
             } else {
                 // 3 bytes
-                bytes.push((cp  >> 12) | 0xE0);
-                bytes.push(((cp >> 6)  & 0x3F) | 0x80);
-                bytes.push((cp         & 0x3F) | 0x80);
+                bytes[pos++] = (cp  >> 12) | 0xE0;
+                bytes[pos++] = ((cp >> 6)  & 0x3F) | 0x80;
+                bytes[pos++] = (cp         & 0x3F) | 0x80;
             }
         }
 
-        return bytes;
+        return pos - offset;
     };
 
     // Helper buffer and views to easily and cheapily convert types
-    var buffer = new ArrayBuffer(8),
-        u8arr  = new Uint8Array(buffer),
-        u16arr = new Uint16Array(buffer),
-        u32arr = new Uint32Array(buffer),
-        i8arr  = new Int8Array(buffer),
-        i16arr = new Int16Array(buffer),
-        i32arr = new Int32Array(buffer),
-        f32arr = new Float32Array(buffer),
-        f64arr = new Float64Array(buffer);
-
-    function writeType16(value, data, tarr) {
-        tarr[0] = value;
-        // You'd expect .push with mutliple arguments to be faster. It's not.
-        data.push(u8arr[1]);
-        data.push(u8arr[0]);
-    }
-
-    function writeType32(value, data, tarr) {
-        tarr[0] = value;
-        // You'd expect .push with mutliple arguments to be faster. It's not.
-        data.push(u8arr[3]);
-        data.push(u8arr[2]);
-        data.push(u8arr[1]);
-        data.push(u8arr[0]);
-    }
-
-    function writeType64(value, data, tarr) {
-        tarr[0] = value;
-        // You'd expect .push with mutliple arguments to be faster. It's not.
-        data.push(u8arr[7]);
-        data.push(u8arr[6]);
-        data.push(u8arr[5]);
-        data.push(u8arr[4]);
-        data.push(u8arr[3]);
-        data.push(u8arr[2]);
-        data.push(u8arr[1]);
-        data.push(u8arr[0]);
-    }
+    var buffer = new ArrayBuffer(8);
+    var u8arr  = new Uint8Array(buffer);
+    var u16arr = new Uint16Array(buffer);
+    var u32arr = new Uint32Array(buffer);
+    var i8arr  = new Int8Array(buffer);
+    var i16arr = new Int16Array(buffer);
+    var i32arr = new Int32Array(buffer);
+    var f32arr = new Float32Array(buffer);
+    var f64arr = new Float64Array(buffer);
 
     function readType16(decoder, tarr) {
         var end = decoder.index + 2;
@@ -184,141 +163,211 @@
     // integers, but can only do binary operations on 32 bit *SIGNED* integers,
     // all would-be-bitwise-operations on anything larger than 16 bit *UNSIGNED*
     // integer needs to use floating point arithmetic - sad panda :(.
-    function brshift16(n) {
-        return Math.floor(n / 0x10000);
-    }
-
     function brshift32(n) {
         return Math.floor(n / 0x100000000);
     }
 
-    function brshift48(n) {
-        return Math.floor(n / 0x1000000000000)
-    }
+    var prealloc = IS_NODE ? null : new ArrayBuffer(2048);
+    var preallocView = IS_NODE ? null : new DataView(prealloc);
+    var preallocBytes = IS_NODE ? Buffer.allocUnsafe(2048) : new Uint8Array(prealloc);
 
     function Encoder() {
-        this.data = [];
+        // this.data = [];
+        this.index = 0;
         this.boolIndex = -1;
         this.boolShift = 0;
     }
 
+    function sizeByteLength(size) {
+        if (size > 0x1FFFFFFFFFFFFF) {
+            throw new Error("Provided size is too long!");
+        }
+
+        return size < 0x80            ? 1
+             : size < 0x4000          ? 2
+             : size < 0x200000        ? 3
+             : size < 0x10000000      ? 4
+             : size < 0x800000000     ? 5
+             : size < 0x40000000000   ? 6
+             : size < 0x2000000000000 ? 7
+             :                          8;
+    }
+
+    var sizeToBytes = [
+        function(pos, size, buf) {},
+        function(pos, size, buf) {
+            buf[pos] = size;
+        },
+        function(pos, size, buf) {
+            buf[pos    ] = (size >> 8) | 0x80;
+            buf[pos + 1] = size;
+        },
+        function(pos, size, buf) {
+            buf[pos    ] = (size >> 16) | 0xC0;
+            buf[pos + 1] = size >> 8;
+            buf[pos + 2] = size;
+        },
+        function(pos, size, buf) {
+            buf[pos    ] = (size / 0x1000000) | 0xE0;
+            buf[pos + 1] = size >> 16;
+            buf[pos + 2] = size >> 8;
+            buf[pos + 3] = size;
+        },
+        function(pos, size, buf) {
+            buf[pos    ] = (size / 0x100000000) | 0xF0;
+            buf[pos + 1] = (size / 0x1000000)   | 0;
+            buf[pos + 2] = size >> 16;
+            buf[pos + 3] = size >> 8;
+            buf[pos + 4] = size;
+        },
+        function(pos, size, buf) {
+            buf[pos    ] = (size / 0x10000000000) | 0xF8;
+            buf[pos + 1] = (size / 0x100000000)   | 0;
+            buf[pos + 2] = (size / 0x1000000)     | 0;
+            buf[pos + 3] = size >> 16;
+            buf[pos + 4] = size >> 8;
+            buf[pos + 5] = size;
+        },
+        function(pos, size, buf) {
+            buf[pos    ] = (size / 0x1000000000000) | 0xFC;
+            buf[pos + 1] = (size / 0x10000000000)   | 0;
+            buf[pos + 2] = (size / 0x100000000)     | 0;
+            buf[pos + 3] = (size / 0x1000000)       | 0;
+            buf[pos + 4] = size >> 16;
+            buf[pos + 5] = size >> 8;
+            buf[pos + 6] = size;
+        },
+        function(pos, size, buf) {
+            buf[pos    ] = (size / 0x100000000000000) | 0xFE;
+            buf[pos + 1] = (size / 0x1000000000000)   | 0;
+            buf[pos + 2] = (size / 0x10000000000)     | 0;
+            buf[pos + 3] = (size / 0x100000000)       | 0;
+            buf[pos + 4] = (size / 0x1000000)         | 0;
+            buf[pos + 5] = size >> 16;
+            buf[pos + 6] = size >> 8;
+            buf[pos + 7] = size;
+        }
+    ]
+
     Encoder.prototype = {
         uint8: function(uint8) {
-            this.data.push(uint8);
+            preallocBytes[this.index++] = uint8;
             return this;
         },
 
-        uint16: function(uint16) {
-            this.data.push(uint16 >>> 8, uint16 & 0xFF);
+        uint16: IS_NODE ? function(uint16) {
+            preallocBytes.writeUInt16BE(uint16, this.index, true);
+            this.index += 2;
+            return this;
+        } : function(uint16) {
+            preallocView.setUint16(this.index, uint16);
+            this.index += 2;
             return this;
         },
 
-        uint32: function(uint32) {
-            writeType32(uint32, this.data, u32arr);
+        uint32: IS_NODE ? function(uint32) {
+            preallocBytes.writeUInt32BE(uint32, this.index, true);
+            this.index += 4;
+            return this;
+        } : function(uint32) {
+            preallocView.setUint32(this.index, uint32);
+            this.index += 4;
             return this;
         },
 
-        uint64: function(uint64) {
-            writeType32(brshift32(uint64), this.data, u32arr);
-            writeType32(uint64, this.data, u32arr);
+        uint64: IS_NODE ? function(uint64) {
+            preallocBytes.writeUInt32BE(brshift32(uint64), this.index, true);
+            preallocBytes.writeUInt32BE(uint64, this.index + 4, true);
+            this.index += 8;
+            return this;
+        } : function(uint64) {
+            preallocView.setUint32(this.index, brshift32(uint64));
+            preallocView.setUint32(this.index + 4, uint64);
+            this.index += 8;
             return this;
         },
 
         int8: function(int8) {
-            i8arr[0] = int8;
-            this.data.push(u8arr[0]);
+            preallocBytes[this.index++] = int8;
             return this;
         },
 
-        int16: function(int16) {
-            writeType16(int16, this.data, i16arr);
+        int16: IS_NODE ? function(int16) {
+            preallocBytes.writeInt16BE(int16, this.index, true);
+            this.index += 2;
+            return this;
+        } : function(int16) {
+            preallocView.setInt16(this.index, int16);
+            this.index += 2;
             return this;
         },
 
-        int32: function(int32) {
-            writeType32(int32, this.data, i32arr);
+        int32: IS_NODE ? function(int32) {
+            preallocBytes.writeInt32BE(int32, this.index, true);
+            this.index += 4;
+            return this;
+        } : function(int32) {
+            preallocView.setInt32(this.index, int32);
+            this.index += 4;
             return this;
         },
 
-        int64: function(int64) {
-            writeType32(brshift32(int64), this.data, i32arr);
+        int64: IS_NODE ? function(int64) {
+            preallocBytes.writeInt32BE(brshift32(int64), this.index, true);
             var low = int64 % 0x100000000;
-            writeType32(low < 0 ? low + 0x100000000 : low, this.data, u32arr);
+            preallocBytes.writeUInt32BE(low < 0 ? low + 0x100000000 : low, this.index + 4, true);
+            this.index += 8;
+            return this;
+        } : function(int64) {
+            preallocView.setInt32(this.index, brshift32(int64));
+            var low = int64 % 0x100000000;
+            preallocView.setUint32(this.index + 4, low < 0 ? low + 0x100000000 : low, this.data, u32arr);
+            this.index += 8;
             return this;
         },
 
-        float32: function(float32) {
-            writeType32(float32, this.data, f32arr);
+        float32: IS_NODE ? function(float32) {
+            preallocBytes.writeFloatBE(float32, this.index, true);
+            this.index += 4;
+            return this;
+        } : function(float32) {
+            preallocView.setFloat32(this.index, float32);
+            this.index += 4;
             return this;
         },
 
-        float64: function(float64) {
-            writeType64(float64, this.data, f64arr);
+        float64: IS_NODE ? function(float64) {
+            preallocBytes.writeDoubleBE(float64, this.index, true);
+            this.index += 8;
+            return this;
+        } : function(float64) {
+            preallocView.setFloat64(this.index, float64);
+            this.index += 8;
             return this;
         },
 
         bool: function(bool) {
-            var bits,
-                bool_bit = bool ? 1 : 0,
-                index = this.data.length;
+            var bool_bit = bool ? 1 : 0;
+            var index = this.index;
 
-            if (this.boolIndex == index && this.boolShift < 7) {
-                this.boolShift += 1;
-                bits = this.data[index - 1];
-                bits = bits | bool_bit << this.boolShift;
-                this.data[index - 1] = bits;
+            if (this.boolIndex === index && this.boolShift < 7) {
+                preallocBytes[index - 1] |= bool_bit << ++this.boolShift;
                 return this;
             }
 
-            this.boolIndex = index + 1;
+            preallocBytes[this.index++] = bool_bit;
+            this.boolIndex = this.index;
             this.boolShift = 0;
-            return this.uint8(bool_bit);
+
+            return this;
         },
 
         size: function(size) {
             var data = this.data;
+            var sbl = sizeByteLength(size);
 
-            if (size < 0x80) {
-                // 1 byte
-                data.push(size);
-            } else if (size < 0x4000) {
-                // 2 bytes
-                data.push((size >> 8) | 0x80);
-                data.push(size & 0xFF);
-            } else if (size < 0x200000) {
-                // 3 bytes
-                u32arr[0] = size;
-                data.push(u8arr[2] | 0xC0);
-                data.push(u8arr[1]);
-                data.push(u8arr[0]);
-            } else if (size < 0x10000000) {
-                // 4 bytes
-                u32arr[0] = size;
-                data.push(u8arr[3] | 0xE0);
-                data.push(u8arr[2]);
-                data.push(u8arr[1]);
-                data.push(u8arr[0]);
-            } else if (size < 0x800000000) {
-                // 5 bytes
-                data.push(brshift32(size) | 0xF0);
-                writeType32(size, data, u32arr);
-            } else if (size < 0x40000000000) {
-                // 6 bytes
-                writeType16(brshift32(size) | 0xF800, data, u16arr);
-                writeType32(size, data, u32arr);
-            } else if (size < 0x2000000000000) {
-                // 7 bytes
-                data.push(brshift48(size) | 0xFC);
-                writeType16(brshift32(size) & 0xFFFF, data, u16arr);
-                writeType32(size, data, u32arr);
-            } else if (size <= 0x1FFFFFFFFFFFFF) {
-                // 8 bytes (MAX_SAFE_INTEGER)
-                writeType16(brshift48(size) | 0xFE00, data, u16arr);
-                writeType16(brshift32(size) % 0x100000000, data, u16arr);
-                writeType32(size, data, u32arr);
-            } else {
-                throw new Error("Provided size is too long!");
-            }
+            sizeToBytes[sbl](this.index, size, preallocBytes);
+            this.index += sbl;
 
             return this;
         },
@@ -329,20 +378,33 @@
             this.size(len);
 
             var i = 0;
-            while (i < len) data.push(bytes[i++]);
+            while (i < len) preallocBytes[this.index++] = bytes[i++];
 
             return this;
         },
 
         string: function(string) {
-            return this.bytes(encodeString(string));
+            var pos = this.index;
+            var sbl = sizeByteLength(string.length * 2);
+            var len = encodeString(string, preallocBytes, pos + sbl);
+
+            sizeToBytes[sbl](pos, len, preallocBytes);
+            this.index = pos + sbl + len;
+            return this;
         },
 
-        end: function() {
-            var data = new BufferType(this.data);
-            this.data = [];
-            return data;
-        }
+        end: IS_NODE
+            ? function() {
+                var data = new Buffer(this.index);
+                preallocBytes.copy(data);
+                this.index = 0;
+                return data;
+            }
+            : function() {
+                var data = preallocBytes.slice(0, this.index);
+                this.index = 0;
+                return data;
+            }
     };
 
     function Decoder(data) {
@@ -460,9 +522,10 @@
         },
 
         string: function() {
-            var end = this.size() + this.index;
+            var len = this.size();
+            var end = this.index + len;
             if (end > this.length) throw new Error("Reading out of boundary");
-            var string = decodeString(this.data, this.index, end);
+            var string = decodeString(this.data, this.index, len);
 
             this.index = end;
 

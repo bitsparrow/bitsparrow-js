@@ -111,3 +111,47 @@ bench('encode string - JSON', function() {
 bench('encode string - msgpack-lite', function() {
     return msgpack.encode("BitSparrow 🐦");
 });
+
+// ---- long string decode ----
+
+var longText = "Sparrow /ˈsper.oʊ/\n\nUnder the classification used in \
+the Handbook of the Birds of the World (HBW) main groupings of the sparrows \
+are the true sparrows (genus Passer), the snowfinches (typically one genus, \
+Montifringilla), and the rock sparrows (Petronia and the pale rockfinch). \
+These groups are similar to each other, and are each fairly homogeneous, \
+especially Passer.[4] Some classifications also include the sparrow-weavers \
+(Plocepasser) and several other African genera (otherwise classified among \
+the weavers, Ploceidae)[4] which are morphologically similar to Passer.[5] \
+According to a study of molecular and skeletal evidence by Jon Fjeldså and \
+colleagues, the cinnamon ibon of the Philippines, previously considered to \
+be a white-eye, is a sister taxon to the sparrows as defined by the HBW. \
+They therefore classify it as its own subfamily within Passeridae.[5]";
+
+buffer = new Encoder().string(longText).end();
+bench('decode long string - BitSparrow', function() {
+    return new Decoder(buffer).string();
+});
+
+buffer = JSON.stringify(longText);
+bench('decode long string - JSON', function() {
+    return JSON.parse(buffer);
+});
+
+buffer = new msgpack.encode(longText);
+bench('decode long string - msgpack-lite', function() {
+    return msgpack.decode(buffer);
+});
+
+// ---- long string encode ----
+//
+bench('encode long string - BitSparrow', function() {
+    return new Encoder().string(longText).end();
+});
+
+bench('encode long string - JSON', function() {
+    return JSON.stringify(longText);
+});
+
+bench('encode long string - msgpack-lite', function() {
+    return msgpack.encode(longText);
+});

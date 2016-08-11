@@ -140,7 +140,7 @@ test('eat own dog food', function (t) {
     t.equal(decoder.uint16(), 9001, 'Can decode uint16');
     t.equal(decoder.uint32(), 1234567890, 'Can decode uint32');
     t.equal(decoder.int8(), -42, 'Can decode int8');
-    t.equal(decoder.int16(), -30000, 'Can decode in16');
+    t.equal(decoder.int16(), -30000, 'Can decode int16');
     t.equal(decoder.int32(), -1234567890, 'Can decode int32');
     t.equal(decoder.string(), 'BitSparrow 🐦', 'Can decode utf8 strings');
     t.equal(decoder.string(), longText, 'Can decode long utf8 strings');
