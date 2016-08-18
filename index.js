@@ -191,7 +191,7 @@
 
             var previous = this.bytes;
             this.capacity = cap;
-            this.bytes = allocBuffer(size);
+            this.bytes = allocBuffer(cap);
             previous.copy(this.bytes);
         },
 
@@ -256,7 +256,7 @@
         },
 
         getSlice: function() {
-            var slice = Buffer.allocUnsafe(this.len);
+            var slice = allocBuffer(this.len);
             this.bytes.copy(slice);
             return slice;
         }
