@@ -165,14 +165,14 @@
         return Math.floor(n / 0x100000000);
     }
 
-    var prealloc = IS_NODE ? null : new ArrayBuffer(2048);
-    var preallocView = IS_NODE ? null : new DataView(prealloc);
-    var preallocBytes = IS_NODE ? Buffer.allocUnsafe != null ? Buffer.allocUnsafe(2048) : new Buffer(2048) : new Uint8Array(prealloc);
-
     function Vector() {
         this.capacity = 0;
         this.len = 0;
     }
+
+    var allocBuffer = IS_NODE && Buffer.allocUnsafe ? Buffer.allocUnsafe : function(size) {
+        return new Buffer(size);
+    };
 
     Vector.prototype = IS_NODE ? {
         reserve: function(size) {
@@ -183,7 +183,7 @@
 
             if (cap === 0) {
                 this.capacity = size;
-                this.bytes = new Buffer.allocUnsafe(size)
+                this.bytes = allocBuffer(size);
                 return;
             }
 
@@ -191,7 +191,7 @@
 
             var previous = this.bytes;
             this.capacity = cap;
-            this.bytes = new Buffer.allocUnsafe(cap);
+            this.bytes = allocBuffer(size);
             previous.copy(this.bytes);
         },
 
