@@ -66,14 +66,21 @@ multiple messages stacked on a single buffer.
 
 ## Performance
 
-The goal of this library is to reduce both the size and parsing time of data
-when compared to JSON or msgpack. While JavaScript lacks low level primitive
-number type transmutations, using pre-cached TypedArrays yields very fast
-results. You can run benchmarks with:
+he two goals for this implementation are:
 
-```
-npm run bench
-```
+- The binary buffer should be smaller than JSON text when sent over the wire.
+- The binary buffer should be _faster_ to decode than the JSON text.
+
+Saving time over the wire only to lose it when trying to read the data would
+be counterproductive. JavaScript has limited support for binary or bitwise
+bitwise operations, and while it can't compete in that regard with native
+code, this implementation has been carefully crafted for the absolute best
+performance possible. In some cases it even beats `JSON.parse` by an order
+of magnitude. You can run benchmarks with:
+
+- Run `npm run bench` in the terminal.
+- Open `index.html` in a browser with console open (Note: Firefox versions
+without electrolysis will hang until the benchmark finishes running).
 
 Most notably, fixed size number decoding, such as `float64` and `uint32`, is
 much faster than even the native JSON implementation in V8, with time per
