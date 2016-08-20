@@ -22,6 +22,8 @@ function bench(name, iter) {
     console.log('');
 }
 
+var options = { codec: msgpack.createCodec({uint8array: true}) };
+
 // ---- float64 decode ----
 
 buffer = new Encoder().float64(3.141592653589793).end();
@@ -33,9 +35,9 @@ bench('decode float64 - JSON', function() {
     return JSON.parse("3.141592653589793");
 });
 
-buffer = msgpack.encode(3.141592653589793);
+buffer = msgpack.encode(3.141592653589793, options);
 bench('decode float64 - msgpack-lite', function() {
-    return msgpack.decode(buffer);
+    return msgpack.decode(buffer, options);
 });
 
 // ---- float64 encode ----
@@ -49,7 +51,7 @@ bench('encode float64 - JSON', function() {
 });
 
 bench('encode float64 - msgpack-lite', function() {
-    return msgpack.encode(3.141592653589793);
+    return msgpack.encode(3.141592653589793, options);
 });
 
 // ---- uint32 decode ----
@@ -63,9 +65,9 @@ bench('decode uint32 - JSON', function() {
     return JSON.parse("4294967295");
 });
 
-buffer = msgpack.encode(0xFFFFFFFF);
+buffer = msgpack.encode(0xFFFFFFFF, options);
 bench('decode uint32 - msgpack-lite', function() {
-    return msgpack.decode(buffer);
+    return msgpack.decode(buffer, options);
 });
 
 // ---- uint32 encode ----
@@ -79,7 +81,7 @@ bench('encode uint32 - JSON', function() {
 });
 
 bench('encode uint32 - msgpack-lite', function() {
-    return msgpack.encode(0xFFFFFFFF);
+    return msgpack.encode(0xFFFFFFFF, options);
 });
 
 // ---- string decode ----
@@ -93,9 +95,9 @@ bench('decode string - JSON', function() {
     return JSON.parse("\"BitSparrow 🐦\"");
 });
 
-buffer = new msgpack.encode("BitSparrow 🐦");
+buffer = new msgpack.encode("BitSparrow 🐦", options);
 bench('decode string - msgpack-lite', function() {
-    return msgpack.decode(buffer);
+    return msgpack.decode(buffer, options);
 });
 
 // ---- string encode ----
@@ -109,7 +111,7 @@ bench('encode string - JSON', function() {
 });
 
 bench('encode string - msgpack-lite', function() {
-    return msgpack.encode("BitSparrow 🐦");
+    return msgpack.encode("BitSparrow 🐦", options);
 });
 
 // ---- long string decode ----
@@ -137,9 +139,9 @@ bench('decode long string - JSON', function() {
     return JSON.parse(buffer);
 });
 
-buffer = new msgpack.encode(longText);
+buffer = new msgpack.encode(longText, options);
 bench('decode long string - msgpack-lite', function() {
-    return msgpack.decode(buffer);
+    return msgpack.decode(buffer, options);
 });
 
 // ---- long string encode ----
@@ -153,5 +155,5 @@ bench('encode long string - JSON', function() {
 });
 
 bench('encode long string - msgpack-lite', function() {
-    return msgpack.encode(longText);
+    return msgpack.encode(longText, options);
 });

@@ -1,5 +1,5 @@
 var test = require('tape');
-var bitsparrow = require('../index');
+var bitsparrow = require('../dist/bitsparrow');
 var Encoder = bitsparrow.Encoder;
 var Decoder = bitsparrow.Decoder;
 

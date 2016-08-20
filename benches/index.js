@@ -1,4 +1,4 @@
-const { Encoder, Decoder } = require('../index.js');
+const { Encoder, Decoder } = require('../dist/bitsparrow.js');
 const msgpack = require("msgpack-lite");
 
 let buffer;
