@@ -1,6 +1,6 @@
 {
   "name": "bitsparrow",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "JavaScript implementation of BitSparrow - http://bitsparrow.io/",
   "main": "dist/bitsparrow.js",
   "jsnext:main": "dist/bitsparrow.jsnext.js",
