@@ -72,19 +72,20 @@ he two goals for this implementation are:
 - The binary buffer should be _faster_ to decode than the JSON text.
 
 Saving time over the wire only to lose it when trying to read the data would
-be counterproductive. JavaScript has limited support for binary or bitwise
-bitwise operations, and while it can't compete in that regard with native
-code, this implementation has been carefully crafted for the absolute best
-performance possible. In some cases it even beats `JSON.parse` by an order
-of magnitude. You can run benchmarks with:
+be counterproductive. The goal here is to leverage, limited as they are,
+JavaScript's binary interfaces to provide an interchange layer that's carefully
+crafted for the absolute best performance possible.
+
+You can run benchmarks with:
 
 - Run `npm run bench` in the terminal.
 - Open `index.html` in a browser with console open (Note: Firefox versions
 without electrolysis will hang until the benchmark finishes running).
 
-Most notably, fixed size number decoding, such as `float64` and `uint32`, is
-much faster than even the native JSON implementation in V8, with time per
-operation being less than 100 nanoseconds on most (even old) CPUs.
+Most notably, dealing with numeric types such as `float64` and `uint32` is
+much faster than even the native JSON implementation in V8 since neither
+decoder nor the encoder touches the binary internals of those formats,
+[endianness](https://en.wikipedia.org/wiki/Endianness) excluded.
 
 # The MIT License (MIT)
 

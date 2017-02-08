@@ -6,8 +6,8 @@
   "jsnext:main": "dist/bitsparrow.jsnext.js",
   "dependencies": {},
   "devDependencies": {
-    "msgpack-lite": "0.1.20",
     "rollup": "^0.34.10",
+    "msgpack-lite": "0.1.26",
     "tap-nyan": "0.0.2",
     "tap-spec": "4.1.1",
     "tape": "4.6.0",
