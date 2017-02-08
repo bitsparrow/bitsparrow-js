@@ -1,0 +1,4 @@
+- `bitsparrow.js` - CommonJS build, use in Node.js / Webpack / Browserify.
+- `bitsparrow.global.js` - Exposing a global `bitsparrow` variable, use in a browser without a bundler.
+- `bitsparrow.global.min.js` - Minified global build.
+- `bitsparrow.next.js` - ES2015 module build, use with Rollup.

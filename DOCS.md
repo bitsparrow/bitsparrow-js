@@ -102,7 +102,7 @@ the `Encoder` is then reset.
 
 ## Decoder
 
-#### Constructor `new Decoder(Buffer | Uint8Array | Array)`
+#### Constructor `new Decoder(Buffer | ArrayBuffer | Uint8Array | Array)`
 Decoder takes a reference to a buffer and exposes methods
 to read typed data from that buffer.
 

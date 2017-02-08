@@ -34,7 +34,7 @@ var socket = new WebSocket('ws://example.com/');
 socket.binaryType = 'arraybuffer';
 
 socket.onmessage = function(event) {
-    var decoder = new bitsparrow.Decoder(new Uint8Array(event.data));
+    var decoder = new bitsparrow.Decoder(event.data);
     // Read the data ...
 }
 
@@ -66,18 +66,26 @@ multiple messages stacked on a single buffer.
 
 ## Performance
 
-The goal of this library is to reduce both the size and parsing time of data
-when compared to JSON or msgpack. While JavaScript lacks low level primitive
-number type transmutations, using pre-cached TypedArrays yields very fast
-results. You can run benchmarks with:
+he two goals for this implementation are:
 
-```
-npm run bench
-```
+- The binary buffer should be smaller than JSON text when sent over the wire.
+- The binary buffer should be _faster_ to decode than the JSON text.
 
-Most notably, fixed size number decoding, such as `float64` and `uint32`, is
-much faster than even the native JSON implementation in V8, with time per
-operation being less than 100 nanoseconds on most (even old) CPUs.
+Saving time over the wire only to lose it when trying to read the data would
+be counterproductive. The goal here is to leverage, limited as they are,
+JavaScript's binary interfaces to provide an interchange layer that's carefully
+crafted for the absolute best performance possible.
+
+You can run benchmarks with:
+
+- Run `npm run bench` in the terminal.
+- Open `index.html` in a browser with console open (Note: Firefox versions
+without electrolysis will hang until the benchmark finishes running).
+
+Most notably, dealing with numeric types such as `float64` and `uint32` is
+much faster than even the native JSON implementation in V8 since neither
+decoder nor the encoder touches the binary internals of those formats,
+[endianness](https://en.wikipedia.org/wiki/Endianness) excluded.
 
 # The MIT License (MIT)
 
